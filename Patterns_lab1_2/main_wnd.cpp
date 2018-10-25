@@ -42,6 +42,10 @@ CMainWnd::CMainWnd()
 	check_box_brdr->SetFont(m_pFont);
 
 	console_drawer = ConsoleDrawer<int>::init();
+	if (check_box_brdr->GetCheck() == FALSE) console_drawer->set(' ');
+	simple_matrix = NULL;
+	sparse_matrix = NULL;
+	prev_matrix = NULL;
 }
 
 CMainWnd::~CMainWnd()
@@ -50,29 +54,40 @@ CMainWnd::~CMainWnd()
 	if (btn_gnrt_smpl_mtrx != NULL) delete btn_gnrt_smpl_mtrx;
 	if (btn_gnrt_sprs_mtrx != NULL) delete btn_gnrt_sprs_mtrx;
 	if (check_box_brdr != NULL) delete check_box_brdr;
+	if (simple_matrix != NULL) delete simple_matrix;
+	if (sparse_matrix != NULL) delete sparse_matrix;
 }
 
 void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
-	SimpleMatrix<int>* simple_matrix = new SimpleMatrix<int>(9, 9);
-	SparseMatrix<int>* sparse_matrix = new SparseMatrix<int>(5, 5);
 	switch (BttId) {
 	case IDC_BUTTON_GENERATE_SIMPLE_MATRIX:
+		if (simple_matrix != NULL) delete simple_matrix;
+		simple_matrix = new SimpleMatrix<int>(9, 9);
 		MatrixInitiator<int>::fill_matrix(simple_matrix, 50, 1000);
 		simple_matrix->set(console_drawer);
 		system("cls");
 		simple_matrix->draw();
+		prev_matrix = simple_matrix;
 		break;
 	case IDC_BUTTON_GENERATE_SPARSE_MATRIX:
+		if (sparse_matrix != NULL) delete sparse_matrix;
+		sparse_matrix = new SparseMatrix<int>(5, 5);
 		MatrixInitiator<int>::fill_matrix(sparse_matrix, 20, 100);
 		sparse_matrix->set(console_drawer);
 		system("cls");
 		sparse_matrix->draw();
+		prev_matrix = sparse_matrix;
 		break;
 	case IDC_CHECK_BOX_BORDER:
-		if (check_box_brdr->GetCheck() == TRUE) //TODO do drawing on signal  
-		AfxMessageBox(L"Border");
+		if (prev_matrix != NULL) {
+			if (check_box_brdr->GetCheck() == TRUE) {
+				console_drawer->set('q');
+			}
+			else {
+				console_drawer->set(' ');
+			}
+			console_drawer->draw_border(prev_matrix->count_rows(), prev_matrix->count_columns());
+		}
 		break;
 	}
-	//delete simple_matrix; fix memory leak
-	//delete sparse_matrix;
 }

@@ -23,5 +23,8 @@ private:
 	CButton* check_box_brdr;
 	CFont* m_pFont;
 	ConsoleDrawer<int>* console_drawer;
+	SimpleMatrix<int>* simple_matrix;
+	SparseMatrix<int>* sparse_matrix;
+	IMatrix<int>* prev_matrix;
 	DECLARE_MESSAGE_MAP();
 };

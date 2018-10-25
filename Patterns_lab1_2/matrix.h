@@ -32,11 +32,11 @@ protected:
 protected:
 	virtual void draw_border() {
 		if (_drawer == NULL) throw "Drawer NULL pointer";
-		_drawer->draw_border(this);
+		_drawer->draw_border(count_rows(), count_columns());
 	}
 	virtual void draw_item(int row, int col) {
 		if (_drawer == NULL) throw "Drawer NULL pointer";
-		_drawer->draw_item(this, row, col);
+		_drawer->draw_item(get(row, col), row, col);
 	}
 public:
 	void set(IDrawer<T>* drawer) {
@@ -67,10 +67,9 @@ public:
 		return _count_col;
 	}
 	virtual ~SomeMatrix() {
-		for (uint i = count_rows() - 1; i >= 0; --i) {
+		for (int i = count_rows() - 1; i >= 0; --i) {
 			delete _data[i];
 		}
-		if (_drawer != NULL) delete _drawer;
 	}
 };
 
@@ -110,13 +109,14 @@ public:
 
 template <class T> class IDrawer {
 public:
-	virtual void draw_border(const IMatrix<T>* const matrix) = 0;
-	virtual void draw_item(const IMatrix<T>* const matrix, int row, int col) = 0;
+	virtual void draw_border(uint count_rows, uint count_columns) = 0;
+	virtual void draw_item(T elem, uint row, uint col) = 0;
 };
 
 template <class T> class ConsoleDrawer : public IDrawer<T> {
 	uint _x_first_shift = 3;
 	uint _y_first_shift = 3;
+	char _symbol_for_border = 'q';
 	ConsoleDrawer() {
 		// see https://stackoverflow.com/questions/191842/how-do-i-get-console-output-in-c-with-a-windows-program
 		// Excellent solution by man with nickname 'Sev'
@@ -160,37 +160,48 @@ template <class T> class ConsoleDrawer : public IDrawer<T> {
 		//////////////////////////////////////////
 	}
 public:
+	void set(char symbol_for_border) {
+		_symbol_for_border = symbol_for_border;
+	}
 	static ConsoleDrawer<T>* init() {
 		static ConsoleDrawer<T> _drawer;
 		return &_drawer;
 	}
-	virtual void draw_border(const IMatrix<T>* const matrix) {
+	virtual void draw_border(uint count_rows, uint count_columns) {
 		COORD position;
 		position.X = _x_first_shift;
 		position.Y = _y_first_shift;
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
 		std::cout.width(1);
-		std::cout << std::string(8 * matrix->count_columns() + 2, '-');
-		for (uint i = 0; i < matrix->count_rows(); ++i) {
+
+		char top_bottom_border = '-';
+		char left_right_border = '|';
+		if (_symbol_for_border != 'q') {
+			top_bottom_border = _symbol_for_border;
+			left_right_border = _symbol_for_border;
+		}
+
+		std::cout << std::string(8 * count_columns + 2, top_bottom_border);
+		for (uint i = 0; i < count_rows; ++i) {
 			position.X = _x_first_shift;
 			position.Y = _y_first_shift + 1 + i;
 			SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
-			std::cout << '|';
-			position.X += 8 * matrix->count_rows() + 1;
+			std::cout << left_right_border;
+			position.X += 8 * count_rows + 1;
 			SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
-			std::cout << '|';
+			std::cout << left_right_border;
 		}
 		position.X = _x_first_shift;
 		position.Y += 1;
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
-		std::cout << std::string(8 * matrix->count_columns() + 2, '-');
+		std::cout << std::string(8 * count_columns + 2, top_bottom_border);
 	}
-	virtual void draw_item(const IMatrix<T>* const matrix, int row, int col) {
+	virtual void draw_item(T elem, uint row, uint col) {
 		COORD position;
 		position.X = _x_first_shift + 8* col + 1;
 		position.Y = _y_first_shift + row + 1;
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
 		std::cout.width(8);
-		std::cout << matrix->get(row, col);
+		std::cout << elem;
 	}
 };
