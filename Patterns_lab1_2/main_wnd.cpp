@@ -2,6 +2,7 @@
 
 BEGIN_MESSAGE_MAP(CMainWnd, CFrameWnd)
 	ON_CONTROL_RANGE(BN_CLICKED, IDC_BUTTON_GENERATE_SIMPLE_MATRIX, IDC_CHECK_BOX_BORDER, OnAllBtnsClick)
+	ON_WM_PAINT()
 END_MESSAGE_MAP()
 
 void CMainWnd::SetClientFont(CString Typeface,
@@ -21,9 +22,24 @@ void CMainWnd::SetClientFont(CString Typeface,
 		DEFAULT_PITCH | FF_DONTCARE, Typeface);
 }
 
+void CMainWnd::OnPaint() {
+	CPaintDC dc(this);
+	window_drawer->set(&dc);
+	switch(drawing_matrix) {
+	case 1:
+		simple_matrix->set(window_drawer);
+		simple_matrix->draw();
+		break;
+	case 2:
+		sparse_matrix->set(window_drawer);
+		sparse_matrix->draw();
+	}
+	window_drawer->set(nullptr);
+}
+
 CMainWnd::CMainWnd()
 {
-	Create(NULL, L"Patterns lab 1-2", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CRect(240, 270, 510, 450),
+	Create(NULL, L"Patterns lab 1-2", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, CRect(240, 270, 1510, 850),
 		NULL, NULL);
 	this->SetClientFont("Times New Roman", 12, FALSE, FALSE);
 
@@ -42,7 +58,12 @@ CMainWnd::CMainWnd()
 	check_box_brdr->SetFont(m_pFont);
 
 	console_drawer = ConsoleDrawer<int>::init();
-	if (check_box_brdr->GetCheck() == FALSE) console_drawer->set(' ');
+	window_drawer = WindowDrawer<int>::init();
+	if (check_box_brdr->GetCheck() == FALSE) {
+		console_drawer->set(' ');
+		window_drawer->set(bool(FALSE));
+	}
+
 	simple_matrix = NULL;
 	sparse_matrix = NULL;
 	prev_matrix = NULL;
@@ -65,28 +86,39 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		simple_matrix = new SimpleMatrix<int>(9, 9);
 		MatrixInitiator<int>::fill_matrix(simple_matrix, 50, 1000);
 		simple_matrix->set(console_drawer);
+		//console//
 		system("cls");
 		simple_matrix->draw();
 		prev_matrix = simple_matrix;
+		//window//
+		drawing_matrix = 1;
+		this->Invalidate();
 		break;
 	case IDC_BUTTON_GENERATE_SPARSE_MATRIX:
 		if (sparse_matrix != NULL) delete sparse_matrix;
 		sparse_matrix = new SparseMatrix<int>(5, 5);
 		MatrixInitiator<int>::fill_matrix(sparse_matrix, 20, 100);
 		sparse_matrix->set(console_drawer);
+		//console//
 		system("cls");
 		sparse_matrix->draw();
 		prev_matrix = sparse_matrix;
+		//window//
+		drawing_matrix = 2;
+		this->Invalidate();
 		break;
 	case IDC_CHECK_BOX_BORDER:
-		if (prev_matrix != NULL) {
 			if (check_box_brdr->GetCheck() == TRUE) {
 				console_drawer->set('q');
+				window_drawer->set(bool(TRUE));
 			}
 			else {
 				console_drawer->set(' ');
+				window_drawer->set(bool(FALSE));
 			}
+		if (prev_matrix != NULL) {
 			console_drawer->draw_border(prev_matrix->count_rows(), prev_matrix->count_columns());
+			this->Invalidate();
 		}
 		break;
 	}

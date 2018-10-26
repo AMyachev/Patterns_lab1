@@ -6,6 +6,7 @@
 #include <io.h> 
 #include <iostream>
 #include "vector.h"
+#include <sstream>
 
 template <class T> class IDrawer;
 
@@ -203,5 +204,53 @@ public:
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
 		std::cout.width(8);
 		std::cout << elem;
+	}
+};
+
+template <class T> class WindowDrawer : public IDrawer<T> {
+	uint _x_first_shift = 300;
+	uint _y_first_shift = 30;
+	uint _height_elem = 25;
+	uint _width_elem = 10;
+	uint _max_count_digits_number = 8;
+	bool _border = FALSE;
+	CPaintDC* _dc;
+
+public:
+	void set(bool border) {
+		_border = border;
+	}
+	void set(CPaintDC* dc) {
+		_dc = dc;
+	}
+	static WindowDrawer<T>* init() {
+		static WindowDrawer<T> _drawer;
+		return &_drawer;
+	}
+	virtual void draw_border(uint count_rows, uint count_columns) {
+		CPen* old_pen(nullptr), *new_pen(nullptr);
+		if (_border == FALSE) {
+			new_pen = new CPen(PS_SOLID, 1, RGB(255, 255, 255));
+		}
+		else {
+			new_pen = new CPen(PS_SOLID, 1, RGB(0, 0, 0));
+		}
+		old_pen = _dc->SelectObject(new_pen);
+
+		_dc->MoveTo(_x_first_shift, _y_first_shift);
+		_dc->LineTo(_x_first_shift + _max_count_digits_number *_width_elem * count_columns, _y_first_shift);
+		_dc->LineTo(_x_first_shift + _max_count_digits_number * _width_elem * count_columns,
+				_y_first_shift +  _height_elem * count_rows);
+		_dc->LineTo(_x_first_shift, _y_first_shift + _height_elem * count_rows);
+		_dc->LineTo(_x_first_shift, _y_first_shift);	
+
+		_dc->SelectObject(old_pen);
+		if (new_pen != nullptr) delete new_pen;
+	}
+	virtual void draw_item(T elem, uint row, uint col) {
+		std::ostringstream oss;
+		oss << elem;
+		_dc->TextOutW(_x_first_shift + 3 + _max_count_digits_number * _width_elem * row,
+				_y_first_shift + 3 + _height_elem * col, CString(oss.str().c_str()));
 	}
 };
