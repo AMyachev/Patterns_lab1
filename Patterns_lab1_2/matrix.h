@@ -7,6 +7,7 @@
 #include <iostream>
 #include "vector.h"
 #include <sstream>
+#include <fstream>
 
 template <class T> class IDrawer;
 
@@ -250,7 +251,58 @@ public:
 	virtual void draw_item(T elem, uint row, uint col) {
 		std::ostringstream oss;
 		oss << elem;
-		_dc->TextOutW(_x_first_shift + 3 + _max_count_digits_number * _width_elem * row,
-				_y_first_shift + 3 + _height_elem * col, CString(oss.str().c_str()));
+		_dc->TextOutW(_x_first_shift + 3 + _max_count_digits_number * _width_elem * col,
+				_y_first_shift + 3 + _height_elem * row, CString(oss.str().c_str()));
 	}
 };
+
+template <class T> class HtmlDrawer: public IDrawer<T> {
+	std::ofstream _fout;
+	std::string _name_file;
+	uint _prev_row;
+	uint _prev_col;
+	uint _count_rows;
+	uint _count_columns;
+	HtmlDrawer(std::string name_file) : _fout(name_file, std::ios_base::out),
+			_prev_row(0), _prev_col(0), _count_rows(0), _count_columns(0) {
+		_fout << "<table>" << std::endl;
+		_fout << "<tr> ";
+	}
+
+	void _draw_empty_item(uint row, uint col) {
+		if ((row < _prev_row) || ((col < _prev_col) && (row == _prev_row))) throw "matrix elements must be passed in sequence";
+		for (uint i = _prev_row; i <= row; ++i) {
+			uint begin_col = (i == _prev_row) ? (_prev_col + 1) : 0;
+			uint end_col = (i == row) ? col : _count_columns;
+			if ((begin_col == 0) && (_prev_col != 0)) _fout << "<tr> ";
+			for (uint j = begin_col; j < end_col; ++j) {
+				_fout << "<td></td> ";
+			}
+			if (end_col == _count_columns) _fout << "</tr>" << std::endl;
+		}
+	}
+public:
+	static std::string default_name_file;
+	static HtmlDrawer<T>* init(std::string name_file) {
+		static HtmlDrawer<T> _drawer(name_file);
+		return &_drawer;
+	}
+	virtual void draw_border(uint count_rows, uint count_columns) {
+		_count_rows = count_rows;
+		_count_columns = count_columns;
+	}
+	virtual void draw_item(T elem, uint row, uint col) {
+		_draw_empty_item(row, col);
+		_fout << "<td>" << elem << "</td> ";
+		_prev_row = row;
+		_prev_col = col;
+	}
+	~HtmlDrawer() {
+		if ((_prev_row != _count_rows) || (_prev_col != _count_columns)) _draw_empty_item(_count_rows - 1, _count_columns);
+		_fout << "</table>" << std::endl;
+		_fout.close();
+	}
+};
+
+template <class T>
+std::string HtmlDrawer<T>::default_name_file("E:\\matrix.html");

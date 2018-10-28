@@ -63,6 +63,7 @@ CMainWnd::CMainWnd()
 		console_drawer->set(' ');
 		window_drawer->set(bool(FALSE));
 	}
+	html_drawer = HtmlDrawer<int>::init(HtmlDrawer<int>::default_name_file);
 
 	simple_matrix = NULL;
 	sparse_matrix = NULL;
@@ -83,8 +84,8 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 	switch (BttId) {
 	case IDC_BUTTON_GENERATE_SIMPLE_MATRIX:
 		if (simple_matrix != NULL) delete simple_matrix;
-		simple_matrix = new SimpleMatrix<int>(9, 9);
-		MatrixInitiator<int>::fill_matrix(simple_matrix, 50, 1000);
+		simple_matrix = new SimpleMatrix<int>(3, 3);
+		MatrixInitiator<int>::fill_matrix(simple_matrix, 5, 1000);
 		simple_matrix->set(console_drawer);
 		//console//
 		system("cls");
@@ -93,6 +94,9 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		//window//
 		drawing_matrix = 1;
 		this->Invalidate();
+		//html file//
+		simple_matrix->set(html_drawer);
+		simple_matrix->draw();
 		break;
 	case IDC_BUTTON_GENERATE_SPARSE_MATRIX:
 		if (sparse_matrix != NULL) delete sparse_matrix;
@@ -106,6 +110,9 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		//window//
 		drawing_matrix = 2;
 		this->Invalidate();
+		//html file//
+		sparse_matrix->set(html_drawer);
+		sparse_matrix->draw();
 		break;
 	case IDC_CHECK_BOX_BORDER:
 			if (check_box_brdr->GetCheck() == TRUE) {

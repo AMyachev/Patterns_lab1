@@ -26,6 +26,7 @@ private:
 	CFont* m_pFont;
 	ConsoleDrawer<int>* console_drawer;
 	WindowDrawer<int>* window_drawer;
+	HtmlDrawer<int>* html_drawer;
 	SimpleMatrix<int>* simple_matrix;
 	SparseMatrix<int>* sparse_matrix;
 	IMatrix<int>* prev_matrix;
