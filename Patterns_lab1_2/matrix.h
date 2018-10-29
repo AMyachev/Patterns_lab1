@@ -69,8 +69,15 @@ public:
 		return _count_col;
 	}
 	virtual ~SomeMatrix() {
+		SimpleVector<T>* smpl_vector = nullptr;
+		SparseVector<T>* sprs_vector = nullptr;
 		for (int i = count_rows() - 1; i >= 0; --i) {
-			delete _data[i];
+			if ((smpl_vector = dynamic_cast<SimpleVector<T>*>(_data[i])) != nullptr) {
+				delete smpl_vector;
+			}
+			else if ((sprs_vector = dynamic_cast<SparseVector<T>*>(_data[i])) != nullptr) {
+				delete sprs_vector;
+			}
 		}
 	}
 };
@@ -160,6 +167,9 @@ template <class T> class ConsoleDrawer : public IDrawer<T> {
 		std::wcin.clear();
 		std::cin.clear();
 		//////////////////////////////////////////
+	}
+	~ConsoleDrawer() {
+		FreeConsole();
 	}
 public:
 	void set(char symbol_for_border) {
@@ -263,7 +273,7 @@ template <class T> class HtmlDrawer: public IDrawer<T> {
 	uint _prev_col;
 	uint _count_rows;
 	uint _count_columns;
-	HtmlDrawer(std::string name_file) : _fout(name_file, std::ios_base::out),
+	HtmlDrawer(std::string name_file) : _fout(name_file, std::ios::out),
 			_prev_row(0), _prev_col(0), _count_rows(0), _count_columns(0) {
 		_fout << "<table>" << std::endl;
 		_fout << "<tr> ";
