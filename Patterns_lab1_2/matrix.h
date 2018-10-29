@@ -8,6 +8,7 @@
 #include "vector.h"
 #include <sstream>
 #include <fstream>
+#include <stdlib.h>
 
 template <class T> class IDrawer;
 
@@ -273,6 +274,7 @@ template <class T> class HtmlDrawer: public IDrawer<T> {
 	uint _prev_col;
 	uint _count_rows;
 	uint _count_columns;
+
 	HtmlDrawer(std::string name_file) : _fout(name_file, std::ios::out),
 			_prev_row(0), _prev_col(0), _count_rows(0), _count_columns(0) {
 		_fout << "<table>" << std::endl;
@@ -291,26 +293,43 @@ template <class T> class HtmlDrawer: public IDrawer<T> {
 			if (end_col == _count_columns) _fout << "</tr>" << std::endl;
 		}
 	}
+
+	void _end_draw() {
+		if ((_prev_row != _count_rows) || (_prev_col != _count_columns)) _draw_empty_item(_count_rows - 1, _count_columns);
+		_fout << "</table>" << std::endl;
+		_fout.close();
+	}
 public:
 	static std::string default_name_file;
+
 	static HtmlDrawer<T>* init(std::string name_file) {
 		static HtmlDrawer<T> _drawer(name_file);
 		return &_drawer;
 	}
+
+	void reopen_file() {
+		_end_draw();
+		_fout.open(_name_file, std::ios::out); //TODO fix this open
+		_prev_row = 0;
+		_prev_col = 0;
+		_fout << "<table>" << std::endl;
+		_fout << "<tr> ";
+	}
+
 	virtual void draw_border(uint count_rows, uint count_columns) {
 		_count_rows = count_rows;
 		_count_columns = count_columns;
 	}
+
 	virtual void draw_item(T elem, uint row, uint col) {
 		_draw_empty_item(row, col);
 		_fout << "<td>" << elem << "</td> ";
 		_prev_row = row;
 		_prev_col = col;
 	}
+
 	~HtmlDrawer() {
-		if ((_prev_row != _count_rows) || (_prev_col != _count_columns)) _draw_empty_item(_count_rows - 1, _count_columns);
-		_fout << "</table>" << std::endl;
-		_fout.close();
+		_end_draw();
 	}
 };
 

@@ -97,6 +97,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		//html file//
 		simple_matrix->set(html_drawer);
 		simple_matrix->draw();
+		html_drawer->reopen_file();
 		break;
 	case IDC_BUTTON_GENERATE_SPARSE_MATRIX:
 		if (sparse_matrix != NULL) delete sparse_matrix;
@@ -113,6 +114,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		//html file//
 		sparse_matrix->set(html_drawer);
 		sparse_matrix->draw();
+		html_drawer->reopen_file();
 		break;
 	case IDC_CHECK_BOX_BORDER:
 			if (check_box_brdr->GetCheck() == TRUE) {
