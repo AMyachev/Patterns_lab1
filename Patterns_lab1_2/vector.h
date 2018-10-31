@@ -9,6 +9,7 @@ public:
 	virtual T get(uint index) const = 0;
 	virtual bool set(uint index, T value) = 0;
 	virtual uint size() const = 0;
+	virtual ~IVector() {}
 };
 
 template <class T> class SimpleVector : public IVector<T> {

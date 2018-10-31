@@ -23,6 +23,7 @@ public:
 	virtual bool set(uint index_row, uint index_col, T value) = 0;
 	virtual uint count_rows() const = 0;
 	virtual uint count_columns() const = 0;
+	virtual ~IMatrix() {}
 };
 
 template <class T> class SomeMatrix : public IMatrix<T> {
@@ -70,15 +71,8 @@ public:
 		return _count_col;
 	}
 	virtual ~SomeMatrix() {
-		SimpleVector<T>* smpl_vector = nullptr;
-		SparseVector<T>* sprs_vector = nullptr;
 		for (int i = count_rows() - 1; i >= 0; --i) {
-			if ((smpl_vector = dynamic_cast<SimpleVector<T>*>(_data[i])) != nullptr) {
-				delete smpl_vector;
-			}
-			else if ((sprs_vector = dynamic_cast<SparseVector<T>*>(_data[i])) != nullptr) {
-				delete sprs_vector;
-			}
+			delete _data[i];
 		}
 	}
 };
