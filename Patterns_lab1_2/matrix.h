@@ -329,3 +329,90 @@ public:
 
 template <class T>
 std::string HtmlDrawer<T>::default_name_file("E:\\matrix.html");
+
+
+template <class T>
+class ChangeNumerationMatrix : public IMatrix<T> {
+	IDrawer<T>* _drawer;
+	IMatrix<T>* _source_matrix;
+	std::vector<uint> _changed_row;
+	std::vector<uint> _changed_columns;
+	void (ChangeNumerationMatrix::*_draw_item)(int, int);
+
+	void _for_constructor() {
+		if (_source_matrix == nullptr) throw "matrix pointer is null";
+		for (uint i = 0; i < _source_matrix->count_rows(); ++i) {
+			_changed_row.push_back(i + 1);
+		}
+		for (uint i = 0; i < _source_matrix->count_columns(); ++i) {
+			_changed_columns.push_back(i + 1);
+		}
+	}
+
+	void _default_draw_item(int row, int col) {
+		_drawer->draw_item(get(row, col), row, col);
+	}
+
+	void _sparse_draw_item(int row, int col) {
+		if (get(row, col) != T()) _drawer->draw_item(get(row, col), row, col);
+	}
+
+public:
+	ChangeNumerationMatrix(SparseMatrix<T>* _decor_matrix): _source_matrix(_decor_matrix) {
+		this->_draw_item = &ChangeNumerationMatrix::_sparse_draw_item;
+		_for_constructor();
+	}
+
+	ChangeNumerationMatrix(IMatrix<T>* _decor_matrix) : _source_matrix(_decor_matrix) {
+		this->_draw_item = &ChangeNumerationMatrix::_default_draw_item;
+		_for_constructor();
+	}
+
+	void set(IDrawer<T>* drawer) {
+		_drawer = drawer;
+	}
+
+	virtual void draw() {
+		if (_drawer == nullptr) throw "drawer not set";
+		_drawer->draw_border();
+		for (uint i = 0; i < count_rows(); ++i)
+			for (uint j = 0; j < count_columns(); ++j)
+				(this->*_draw_item)();
+	}
+
+	virtual T get(uint index_row, uint index_col) {
+		_source_matrix->get(_changed_row[index_row], _changed_columns[index_col]);
+	}
+
+	virtual bool set(uint index_row, uint index_col, T value) {
+		_source_matrix->set(_changed_row[index_row], _changed_columns[index_col], value);
+	}
+
+	virtual void renumber_rows(uint old_index, uint new_index) {
+		if (old_index == new_index) return;
+		if (old_index > count_rows()) throw "row index > count rows";
+		if (new_index > count_rows()) throw "row index > count rows";
+		_changed_row[old_index] = new_index;
+		_changed_row[new_index] = old_index;
+	}
+
+	void renumber_columns(uint old_index, uint new_index) {
+		if (old_index == new_index) return;
+		if (old_index > count_columns()) throw "column index > count columns";
+		if (new_index > count_columns()) throw "column index > count columns";
+		_changed_columns[old_index] = new_index;
+		_changed_columns[new_index] = old_index;
+	}
+
+	IMatrix<T>* restore() {
+		return _source_matrix;
+	}
+
+	uint count_rows() {
+		_source_matrix->count_rows();
+	}
+
+	uint count_columns() {
+		_source_matrix->count_columns();
+	}
+};
