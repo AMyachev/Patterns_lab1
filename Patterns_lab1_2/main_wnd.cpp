@@ -27,11 +27,11 @@ void CMainWnd::OnPaint() {
 	window_drawer->set(&dc);
 	switch(drawing_matrix) {
 	case 1:
-		simple_matrix->set(window_drawer);
+		simple_matrix->set_drawer(window_drawer);
 		simple_matrix->draw();
 		break;
 	case 2:
-		sparse_matrix->set(window_drawer);
+		sparse_matrix->set_drawer(window_drawer);
 		sparse_matrix->draw();
 	}
 	window_drawer->set(nullptr);
@@ -53,6 +53,16 @@ CMainWnd::CMainWnd()
 		CRect(50, 90, 200, 130), this, IDC_BUTTON_GENERATE_SPARSE_MATRIX);
 	btn_gnrt_sprs_mtrx->SetFont(m_pFont);
 
+	btn_renumber = new CButton();
+	if (btn_renumber != NULL) btn_renumber->Create(L"Renumber", WS_CHILD | WS_VISIBLE | SS_CENTER,
+		CRect(50, 140, 200, 180), this, IDC_BUTTON_RENUMBER);
+	btn_renumber->SetFont(m_pFont);
+
+	btn_restore = new CButton();
+	if (btn_restore != NULL) btn_restore->Create(L"Restore", WS_CHILD | WS_VISIBLE | SS_CENTER,
+		CRect(50, 190, 200, 230), this, IDC_BUTTON_RESTORE);
+	btn_restore->SetFont(m_pFont);
+
 	check_box_brdr = new CButton();
 	check_box_brdr->Create(L"visible border", WS_VISIBLE | BS_AUTOCHECKBOX | WS_CHILD, CRect(70, 60, 220, 80), this, IDC_CHECK_BOX_BORDER);
 	check_box_brdr->SetFont(m_pFont);
@@ -68,6 +78,7 @@ CMainWnd::CMainWnd()
 	simple_matrix = NULL;
 	sparse_matrix = NULL;
 	prev_matrix = NULL;
+	decorator_matrix = NULL;
 }
 
 CMainWnd::~CMainWnd()
@@ -78,6 +89,9 @@ CMainWnd::~CMainWnd()
 	if (check_box_brdr != NULL) delete check_box_brdr;
 	if (simple_matrix != NULL) delete simple_matrix;
 	if (sparse_matrix != NULL) delete sparse_matrix;
+	if (btn_renumber != NULL) delete btn_renumber;
+	if (btn_restore != NULL) delete btn_restore;
+	if (decorator_matrix != NULL) delete decorator_matrix;
 }
 
 void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
@@ -86,7 +100,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		if (simple_matrix != NULL) delete simple_matrix;
 		simple_matrix = new SimpleMatrix<int>(3, 3);
 		MatrixInitiator<int>::fill_matrix(simple_matrix, 5, 1000);
-		simple_matrix->set(console_drawer);
+		simple_matrix->set_drawer(console_drawer);
 		//console//
 		system("cls");
 		simple_matrix->draw();
@@ -95,7 +109,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		drawing_matrix = 1;
 		this->Invalidate();
 		//html file//
-		simple_matrix->set(html_drawer);
+		simple_matrix->set_drawer(html_drawer);
 		simple_matrix->draw();
 		html_drawer->reopen_file();
 		break;
@@ -103,7 +117,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		if (sparse_matrix != NULL) delete sparse_matrix;
 		sparse_matrix = new SparseMatrix<int>(5, 5);
 		MatrixInitiator<int>::fill_matrix(sparse_matrix, 20, 100);
-		sparse_matrix->set(console_drawer);
+		sparse_matrix->set_drawer(console_drawer);
 		//console//
 		system("cls");
 		sparse_matrix->draw();
@@ -112,9 +126,34 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		drawing_matrix = 2;
 		this->Invalidate();
 		//html file//
-		sparse_matrix->set(html_drawer);
+		sparse_matrix->set_drawer(html_drawer);
 		sparse_matrix->draw();
 		html_drawer->reopen_file();
+		break;
+	case IDC_BUTTON_RENUMBER:
+		if (prev_matrix == NULL) {
+			AfxMessageBox(L"Please, generate some matrix");
+			return;
+		}
+		if (decorator_matrix == NULL || decorator_matrix->restore() != prev_matrix) {
+			delete decorator_matrix;
+			decorator_matrix = new ChangeNumerationMatrix<int>(prev_matrix);
+			decorator_matrix->set_drawer(console_drawer);
+		}
+		decorator_matrix->renumber_columns(rand() % decorator_matrix->count_columns(),
+										rand() % decorator_matrix->count_columns());
+		decorator_matrix->renumber_rows(rand() % decorator_matrix->count_rows(),
+										rand() % decorator_matrix->count_rows());
+		system("cls");
+		decorator_matrix->draw();
+		break;
+	case IDC_BUTTON_RESTORE:
+		if (decorator_matrix == NULL) AfxMessageBox(L"Sorry, nothing to restore");
+		else {
+			system("cls");
+			decorator_matrix->restore()->set_drawer(console_drawer);
+			decorator_matrix->restore()->draw();
+		}
 		break;
 	case IDC_CHECK_BOX_BORDER:
 			if (check_box_brdr->GetCheck() == TRUE) {
