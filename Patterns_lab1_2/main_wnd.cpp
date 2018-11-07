@@ -112,6 +112,10 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		simple_matrix->set_drawer(html_drawer);
 		simple_matrix->draw();
 		html_drawer->reopen_file();
+		//for_decorator//
+		delete decorator_matrix;
+		decorator_matrix = new ChangeNumerationMatrix<int>(simple_matrix);
+		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_BUTTON_GENERATE_SPARSE_MATRIX:
 		if (sparse_matrix != NULL) delete sparse_matrix;
@@ -129,16 +133,15 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		sparse_matrix->set_drawer(html_drawer);
 		sparse_matrix->draw();
 		html_drawer->reopen_file();
+		//for_decorator//
+		delete decorator_matrix;
+		decorator_matrix = new ChangeNumerationMatrix<int>(sparse_matrix);
+		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_BUTTON_RENUMBER:
 		if (prev_matrix == NULL) {
 			AfxMessageBox(L"Please, generate some matrix");
 			return;
-		}
-		if (decorator_matrix == NULL || decorator_matrix->restore() != prev_matrix) {
-			delete decorator_matrix;
-			decorator_matrix = new ChangeNumerationMatrix<int>(prev_matrix);
-			decorator_matrix->set_drawer(console_drawer);
 		}
 		decorator_matrix->renumber_columns(rand() % decorator_matrix->count_columns(),
 										rand() % decorator_matrix->count_columns());
@@ -151,8 +154,8 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		if (decorator_matrix == NULL) AfxMessageBox(L"Sorry, nothing to restore");
 		else {
 			system("cls");
-			decorator_matrix->restore()->set_drawer(console_drawer);
-			decorator_matrix->restore()->draw();
+			decorator_matrix->restore();
+			decorator_matrix->draw();
 		}
 		break;
 	case IDC_CHECK_BOX_BORDER:

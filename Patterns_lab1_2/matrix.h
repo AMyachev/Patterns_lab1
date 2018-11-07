@@ -115,7 +115,7 @@ public:
 template <class T> class IDrawer {
 public:
 	virtual void draw_border(uint count_rows, uint count_columns) = 0;
-	virtual void draw_item(T elem, uint row, uint col) = 0;
+	virtual void draw_item(T elem, uint index_row, uint index_col) = 0;
 };
 
 template <class T> class ConsoleDrawer : public IDrawer<T> {
@@ -204,10 +204,10 @@ public:
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
 		std::cout << std::string(8 * count_columns + 2, top_bottom_border);
 	}
-	virtual void draw_item(T elem, uint row, uint col) {
+	virtual void draw_item(T elem, uint index_row, uint index_col) {
 		COORD position;
-		position.X = _x_first_shift + 8* col + 1;
-		position.Y = _y_first_shift + row + 1;
+		position.X = _x_first_shift + 8 * index_col + 1;
+		position.Y = _y_first_shift + index_row + 1;
 		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
 		std::cout.width(8);
 		std::cout << elem;
@@ -254,11 +254,11 @@ public:
 		_dc->SelectObject(old_pen);
 		if (new_pen != nullptr) delete new_pen;
 	}
-	virtual void draw_item(T elem, uint row, uint col) {
+	virtual void draw_item(T elem, uint index_row, uint index_col) {
 		std::ostringstream oss;
 		oss << elem;
-		_dc->TextOutW(_x_first_shift + 3 + _max_count_digits_number * _width_elem * col,
-				_y_first_shift + 3 + _height_elem * row, CString(oss.str().c_str()));
+		_dc->TextOutW(_x_first_shift + 3 + _max_count_digits_number * _width_elem * index_col,
+				_y_first_shift + 3 + _height_elem * index_row, CString(oss.str().c_str()));
 	}
 };
 
@@ -316,11 +316,11 @@ public:
 		_count_columns = count_columns;
 	}
 
-	virtual void draw_item(T elem, uint row, uint col) {
-		_draw_empty_item(row, col);
+	virtual void draw_item(T elem, uint index_row, uint index_col) {
+		_draw_empty_item(index_row, index_col);
 		_fout << "<td>" << elem << "</td> ";
-		_prev_row = row;
-		_prev_col = col;
+		_prev_row = index_row;
+		_prev_col = index_col;
 	}
 
 	~HtmlDrawer() {
@@ -333,52 +333,34 @@ std::string HtmlDrawer<T>::default_name_file("E:\\matrix.html");
 
 
 template <class T>
-class ChangeNumerationMatrix : public IMatrix<T> {
+class ChangeNumerationMatrix : public IMatrix<T>, IDrawer<T> {
 	IDrawer<T>* _drawer;
 	IMatrix<T>* _source_matrix;
 	std::vector<uint> _changed_row;
 	std::vector<uint> _changed_columns;
-	void (ChangeNumerationMatrix::*_draw_item)(int, int);
-
-	void _for_constructor() {
-		if (_source_matrix == nullptr) throw "matrix pointer is null";
-		for (uint i = 0; i < _source_matrix->count_rows(); ++i) {
-			_changed_row.push_back(i);
-		}
-		for (uint i = 0; i < _source_matrix->count_columns(); ++i) {
-			_changed_columns.push_back(i);
-		}
-	}
-
-	void _default_draw_item(int row, int col) {
-		_drawer->draw_item(get(row, col), row, col);
-	}
-
-	void _sparse_draw_item(int row, int col) {
-		if (get(row, col) != T()) _drawer->draw_item(get(row, col), row, col);
-	}
 
 public:
-	ChangeNumerationMatrix(SparseMatrix<T>* _decor_matrix): _source_matrix(_decor_matrix) {
-		this->_draw_item = &ChangeNumerationMatrix::_sparse_draw_item;
-		_for_constructor();
-	}
-
 	ChangeNumerationMatrix(IMatrix<T>* _decor_matrix) : _source_matrix(_decor_matrix) {
-		this->_draw_item = &ChangeNumerationMatrix::_default_draw_item;
-		_for_constructor();
+		if (_source_matrix == nullptr) throw "matrix pointer is null";
+		restore();
 	}
 
 	bool set_drawer(IDrawer<T>* drawer) {
 		return _drawer = drawer;
 	}
 
+	virtual void draw_border(uint count_rows, uint count_columns) {
+		_drawer->draw_border(count_rows, count_columns);
+	}
+
+	virtual void draw_item(T elem, uint index_row, uint index_col) {
+		_drawer->draw_item(elem, _changed_row[index_row], _changed_columns[index_col]);
+	}
+
 	virtual void draw() {
 		if (_drawer == nullptr) throw "drawer not set";
-		_drawer->draw_border(count_rows(), count_columns());
-		for (uint i = 0; i < count_rows(); ++i)
-			for (uint j = 0; j < count_columns(); ++j)
-				(this->*_draw_item)(i, j);
+		_source_matrix->set_drawer(this);
+		_source_matrix->draw();
 	}
 
 	virtual T get(uint index_row, uint index_col) const {
@@ -393,11 +375,12 @@ public:
 		if (old_index == new_index) return;
 		if (old_index > count_rows()) throw "row index > count rows";
 		if (new_index > count_rows()) throw "row index > count rows";
-		_changed_row[old_index] = new_index;
-		_changed_row[new_index] = old_index;
+		uint for_swap = _changed_row[old_index];
+		_changed_row[old_index] = _changed_row[new_index];
+		_changed_row[new_index] = for_swap;
 	}
 
-	void renumber_columns(uint old_index, uint new_index) {
+	virtual void renumber_columns(uint old_index, uint new_index) {
 		if (old_index == new_index) return;
 		if (old_index > count_columns()) throw "column index > count columns";
 		if (new_index > count_columns()) throw "column index > count columns";
@@ -406,8 +389,11 @@ public:
 		_changed_columns[new_index] = for_swap;
 	}
 
-	IMatrix<T>* restore() {
-		return _source_matrix;
+	void restore() {
+		_changed_row.clear();
+		_changed_columns.clear();
+		for (uint i = 0; i < _source_matrix->count_rows(); ++i) _changed_row.push_back(i);
+		for (uint i = 0; i < _source_matrix->count_columns(); ++i) _changed_columns.push_back(i);
 	}
 
 	uint count_rows() const {
