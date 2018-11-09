@@ -29,7 +29,7 @@ public:
 		return false;
 	}
 	virtual uint size() const {
-		return _vector.size();
+		return (uint)_vector.size();
 	}
 };
 

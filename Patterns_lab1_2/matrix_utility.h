@@ -4,7 +4,7 @@
 
 template <class T> class MatrixInitiator {
 public:
-	static void fill_matrix(IMatrix<T>* matrix, uint count_not_zero_elemets, T max_value)
+	static IMatrix<T>* fill_matrix(IMatrix<T>* matrix, uint count_not_zero_elemets, T max_value)
 	{
 		uint count_elem = matrix.count_columns() * matrix.count_rows();
 		if (count_not_zero_elemets > count_elem) count_not_zero_elemets =
@@ -25,11 +25,11 @@ public:
 };
 
 //fill_matrix specialization
-void MatrixInitiator<int>::fill_matrix(IMatrix<int>* matrix, uint count_not_zero_elemets, int
+IMatrix<int>* MatrixInitiator<int>::fill_matrix(IMatrix<int>* matrix, uint count_not_zero_elemets, int
 	max_value) {
 	uint count_elem = matrix->count_columns() * matrix->count_rows();
 	if (count_not_zero_elemets > count_elem) count_not_zero_elemets = count_elem;
-	srand(time(NULL));
+	srand((uint)time(NULL));
 	std::vector<uint> index;
 	for (uint i = 0; i < count_elem; ++i) {
 		index.push_back(i);
@@ -38,10 +38,10 @@ void MatrixInitiator<int>::fill_matrix(IMatrix<int>* matrix, uint count_not_zero
 		uint index_cell = rand() % index.size();
 		uint number_cell = index[index_cell];
 		index.erase(index.begin() + index_cell);
-		matrix->set(number_cell / matrix->count_rows(),
-			number_cell % matrix->count_columns(), 1 + rand() % (max_value -
-				1));
+		matrix->set(number_cell / matrix->count_columns(),
+			number_cell % matrix->count_columns(), 1 + rand() % (max_value - 1));
 	}
+	return matrix;
 }
 
 template <class T, class X> class MatrixStatistics {

@@ -15,11 +15,13 @@ template <class T> class IDrawer;
 template <class T> class IDrawable {
 public:
 	virtual void draw() = 0;
-	virtual bool set_drawer(IDrawer<T>* drawer) = 0;
+	virtual void set_drawer(IDrawer<T>* drawer) = 0;
 };
 
 template <class T> class IMatrix : public IDrawable<T> {
 public:
+	virtual void set_parent(IMatrix<T>* parent) = 0;
+	virtual IMatrix<T>* get_parent() = 0;
 	virtual T get(uint index_row, uint index_col) const = 0;
 	virtual bool set(uint index_row, uint index_col, T value) = 0;
 	virtual uint count_rows() const = 0;
@@ -28,6 +30,7 @@ public:
 };
 
 template <class T> class SomeMatrix : public IMatrix<T> {
+	IMatrix<T>* _parent;
 	IDrawer<T>* _drawer;
 	std::vector<IVector<T>*> _data;
 	uint _count_rows;
@@ -44,10 +47,17 @@ protected:
 		_drawer->draw_item(get(row, col), row, col);
 	}
 public:
-	bool set_drawer(IDrawer<T>* drawer) {
-		return _drawer = drawer;
+	virtual void set_parent(IMatrix<T>* parent) {
+		_parent = parent;
+	}
+	virtual IMatrix<T>* get_parent() {
+		return _parent;
+	}
+	virtual void set_drawer(IDrawer<T>* drawer) {
+		_drawer = drawer;
 	}
 	void init(uint count_rows, uint count_columns) {
+		_parent = nullptr;
 		_count_rows = count_rows;
 		_count_col = count_columns;
 		for (uint i = 0; i < count_rows; ++i) {
@@ -55,6 +65,7 @@ public:
 		}
 	}
 	virtual T get(uint index_row, uint index_col) const {
+		if ((index_row >= _count_rows) || (index_col >= _count_col)) throw "element with this position not belong matrix";
 		return _data[index_row]->get(index_col);
 	}
 	virtual bool set(uint index_row, uint index_col, T value) {
@@ -127,7 +138,7 @@ template <class T> class ConsoleDrawer : public IDrawer<T> {
 		// Excellent solution by man with nickname 'Sev'
 		// Create a console for this application
 		AllocConsole();
-
+		system("mode con cols=120 lines=50");
 		// Get STDOUT handle
 		HANDLE ConsoleOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 		int SystemOutput = _open_osfhandle(intptr_t(ConsoleOutput), _O_TEXT);
@@ -195,7 +206,7 @@ public:
 			position.Y = _y_first_shift + 1 + i;
 			SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
 			std::cout << left_right_border;
-			position.X += 8 * count_rows + 1;
+			position.X += 8 * count_columns + 1;
 			SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
 			std::cout << left_right_border;
 		}
@@ -332,21 +343,20 @@ template <class T>
 std::string HtmlDrawer<T>::default_name_file("E:\\matrix.html");
 
 
-template <class T>
-class ChangeNumerationMatrix : public IMatrix<T>, IDrawer<T> {
+template <class T> class ChangeNumerationMatrix : public IMatrix<T>, IDrawer<T> {
+	IMatrix<T>* _parent;
 	IDrawer<T>* _drawer;
 	IMatrix<T>* _source_matrix;
 	std::vector<uint> _changed_row;
 	std::vector<uint> _changed_columns;
-
 public:
-	ChangeNumerationMatrix(IMatrix<T>* _decor_matrix) : _source_matrix(_decor_matrix) {
+	ChangeNumerationMatrix(IMatrix<T>* _decor_matrix) : _parent(nullptr), _source_matrix(_decor_matrix) {
 		if (_source_matrix == nullptr) throw "matrix pointer is null";
 		restore();
 	}
 
-	bool set_drawer(IDrawer<T>* drawer) {
-		return _drawer = drawer;
+	virtual void set_drawer(IDrawer<T>* drawer) {
+		_drawer = drawer;
 	}
 
 	virtual void draw_border(uint count_rows, uint count_columns) {
@@ -402,5 +412,126 @@ public:
 
 	uint count_columns() const {
 		return _source_matrix->count_columns();
+	}
+	
+	virtual void set_parent(IMatrix<T>* parent) {
+		_parent = parent;
+	}
+	virtual IMatrix<T>* get_parent() {
+		return _parent;
+	}
+};
+
+template <class T> class GroupMatrix : public IMatrix<T>, IDrawer<T> {
+	IMatrix<T>* _parent;
+	IDrawer<T>* _drawer;
+	std::vector<IMatrix<T>*> _group;
+
+	virtual void _size_adjustment(IMatrix<T>* matrix) = 0;
+protected:
+	virtual void adjust_matrix_shift(IMatrix<T>* matrix) = 0;
+	uint _matrix_shift_for_draw;
+	uint _count_rows;
+	uint _count_columns;
+public:
+	void init(std::vector<IMatrix<T>*> group) {
+		_parent = nullptr; _group = group; _count_rows = 0; _count_columns = 0;
+		for (uint i = 0; i < group.size(); ++i) {
+			_size_adjustment(_group[i]);
+			_group[i]->set_parent(this);
+		}
+	}
+	virtual void set_parent(IMatrix<T>* parent) {
+		_parent = parent;
+	}
+	virtual IMatrix<T>* get_parent() {
+		return _parent;
+	}
+	void set(IMatrix<T>* matrix) {
+		_group.push_back(matrix);
+		_size_adjustment(matrix);
+	}
+	virtual T get(uint index_row, uint index_col) const {
+		if ((index_row >= _count_rows) || (index_col >= _count_columns)) throw "element with this position not belong matrix";
+		for (uint i = 0; i < _group.size(); ++i) {
+			try {
+				return _group[i]->get(index_row, index_col);
+			}
+			catch (char*) {
+				continue;
+			}
+		}
+		return T();
+	}
+	virtual bool set(uint index_row, uint index_col, T value) {
+		if ((index_row >= _count_rows) || (index_col >= _count_columns)) return FALSE;
+		for (uint i = 0; i < _group.size(); ++i) {
+			if (TRUE == _group[i]->set(index_row, index_col, value))  return TRUE;
+		}
+		return FALSE;
+	}
+	virtual uint count_rows() const {
+		return _count_rows;
+	}
+	virtual uint count_columns() const {
+		return _count_columns;
+	}
+	virtual void set_drawer(IDrawer<T>* drawer) {
+		_drawer = drawer;
+	}
+	virtual void draw_border(uint count_rows, uint count_columns) {
+		return;
+	}
+	virtual ~GroupMatrix() {
+		for (int i = (int)(_group.size() - 1); i >= 0; --i)
+			delete _group[i];
+	}
+
+	virtual void draw() {
+		if (nullptr == _parent) _drawer->draw_border(_count_rows, _count_columns);
+		_matrix_shift_for_draw = 0;
+		for (uint i = 0; i < _group.size(); ++i) {
+			_group[i]->set_drawer(this);
+			_group[i]->draw();
+			adjust_matrix_shift(_group[i]);
+		}
+	}
+	virtual void draw_item(T elem, uint index_row, uint index_col) {
+		_drawer->draw_item(elem, index_row, index_col);
+	}
+
+};
+
+template <class T> class VerticalGroupMatrix : public GroupMatrix<T> {
+	virtual void _size_adjustment(IMatrix<T>* matrix) {
+		_count_rows += matrix->count_rows();
+		if (matrix->count_columns() > _count_columns) _count_columns = matrix->count_columns();
+	}
+public:
+	VerticalGroupMatrix(std::vector<IMatrix<T>*> group) {
+		GroupMatrix::init(group);
+	}
+	virtual void adjust_matrix_shift(IMatrix<T>* matrix) {
+		_matrix_shift_for_draw += matrix->count_rows();
+	}
+	virtual void draw_item(T elem, uint index_row, uint index_col) {
+		GroupMatrix<T>::draw_item(elem, index_row + _matrix_shift_for_draw, index_col);
+	}
+};
+
+template <class T> class GorizontalGroupMatrix : public GroupMatrix<T> {
+	virtual void _size_adjustment(IMatrix<T>* matrix) {
+		_count_columns += matrix->count_columns();
+		if (matrix->count_rows() > _count_rows) _count_rows = matrix->count_rows();
+	}
+public:
+	GorizontalGroupMatrix(std::vector<IMatrix<T>*> group) {
+		GroupMatrix::init(group);
+	}
+	virtual void adjust_matrix_shift(IMatrix<T>* matrix) {
+		_matrix_shift_for_draw += matrix->count_columns();
+	}
+	virtual void draw_item(T elem, uint index_row, uint index_col) {
+		GroupMatrix<T>::draw_item(elem, index_row, index_col + _matrix_shift_for_draw);
 	}
 };
