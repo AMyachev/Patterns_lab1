@@ -133,7 +133,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		html_drawer->reopen_file();
 		//for_decorator//
 		delete decorator_matrix;
-		decorator_matrix = new ChangeNumerationMatrix<int>(new NullMatrix<int>(simple_matrix));
+		decorator_matrix = new ChangeNumerationMatrix<int>(simple_matrix);
 		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_BUTTON_GENERATE_SPARSE_MATRIX:

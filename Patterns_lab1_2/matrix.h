@@ -6,11 +6,10 @@
 #include <io.h> 
 #include <iostream>
 #include "vector.h"
+#include "drawer.h"
 #include <sstream>
 #include <fstream>
 #include <stdlib.h>
-
-template <class T> class IDrawer;
 
 template <class T> class IDrawable {
 public:
@@ -18,10 +17,8 @@ public:
 	virtual void set_drawer(IDrawer<T>* drawer) = 0;
 };
 
-template <class T> class IMatrix {
+template <class T> class IMatrix: public IDrawable<T> {
 public:
-	virtual void set_parent(IMatrix<T>* parent) = 0;
-	virtual IMatrix<T>* get_parent() = 0;
 	virtual T get(uint index_row, uint index_col) const = 0;
 	virtual bool set(uint index_row, uint index_col, T value) = 0;
 	virtual uint count_rows() const = 0;
@@ -29,8 +26,7 @@ public:
 	virtual ~IMatrix() {}
 };
 
-template <class T> class SomeMatrix : public IMatrix<T>, IDrawable<T> {
-	IMatrix<T>* _parent;
+template <class T> class SomeMatrix : public IMatrix<T> {
 	IDrawer<T>* _drawer;
 	std::vector<IVector<T>*> _data;
 	uint _count_rows;
@@ -47,17 +43,10 @@ protected:
 		_drawer->draw_item(get(row, col), row, col);
 	}
 public:
-	virtual void set_parent(IMatrix<T>* parent) {
-		_parent = parent;
-	}
-	virtual IMatrix<T>* get_parent() {
-		return _parent;
-	}
 	virtual void set_drawer(IDrawer<T>* drawer) {
 		_drawer = drawer;
 	}
 	void init(uint count_rows, uint count_columns) {
-		_parent = nullptr;
 		_count_rows = count_rows;
 		_count_col = count_columns;
 		for (uint i = 0; i < count_rows; ++i) {
@@ -115,257 +104,55 @@ public:
 	SparseMatrix(uint count_rows, uint count_columns) {
 		SomeMatrix<T>::init(count_rows, count_columns);
 	}
+	virtual T get(uint index_row, uint index_col) const {
+		if ((index_row >= count_rows()) || (index_col >= count_columns())) throw "element with this position not belong matrix";
+		T temp = SomeMatrix<T>::get(index_row, index_col);
+		if (T() == temp) throw "sparse element";
+		return temp;
+	}
 	virtual void draw() {
 		draw_border();
 		for (uint i = 0; i < count_rows(); ++i)
-			for (uint j = 0; j < count_columns(); ++j)
-				if (get(i, j) != T()) draw_item(i, j);
-	}
-};
-
-template <class T> class IDrawer {
-public:
-	virtual void draw_border(uint count_rows, uint count_columns) = 0;
-	virtual void draw_item(T elem, uint index_row, uint index_col) = 0;
-};
-
-template <class T> class ConsoleDrawer : public IDrawer<T> {
-	uint _x_first_shift = 3;
-	uint _y_first_shift = 3;
-	char _symbol_for_border = 'q';
-	ConsoleDrawer() {
-		// see https://stackoverflow.com/questions/191842/how-do-i-get-console-output-in-c-with-a-windows-program
-		// Excellent solution by man with nickname 'Sev'
-		// Create a console for this application
-		AllocConsole();
-		system("mode con cols=120 lines=50");
-		// Get STDOUT handle
-		HANDLE ConsoleOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-		int SystemOutput = _open_osfhandle(intptr_t(ConsoleOutput), _O_TEXT);
-		FILE *COutputHandle = _fdopen(SystemOutput, "w");
-
-		// Get STDERR handle
-		HANDLE ConsoleError = GetStdHandle(STD_ERROR_HANDLE);
-		int SystemError = _open_osfhandle(intptr_t(ConsoleError), _O_TEXT);
-		FILE *CErrorHandle = _fdopen(SystemError, "w");
-
-		// Get STDIN handle
-		HANDLE ConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
-		int SystemInput = _open_osfhandle(intptr_t(ConsoleInput), _O_TEXT);
-		FILE *CInputHandle = _fdopen(SystemInput, "r");
-
-		//make cout, wcout, cin, wcin, wcerr, cerr, wclog and clog point to console as well
-		std::ios::sync_with_stdio(true);
-
-		// Redirect the CRT standard input, output, and error handles to the console
-		freopen_s(&CInputHandle, "CONIN$", "r", stdin);
-		freopen_s(&COutputHandle, "CONOUT$", "w", stdout);
-		freopen_s(&CErrorHandle, "CONOUT$", "w", stderr);
-
-		//Clear the error state for each of the C++ standard stream objects. We need to do this, as
-		//attempts to access the standard streams before they refer to a valid target will cause the
-		//iostream objects to enter an error state. In versions of Visual Studio after 2005, this seems
-		//to always occur during startup regardless of whether anything has been read from or written to
-		//the console or not.
-		std::wcout.clear();
-		std::cout.clear();
-		std::wcerr.clear();
-		std::cerr.clear();
-		std::wcin.clear();
-		std::cin.clear();
-		//////////////////////////////////////////
-	}
-	~ConsoleDrawer() {
-		FreeConsole();
-	}
-public:
-	void set(char symbol_for_border) {
-		_symbol_for_border = symbol_for_border;
-	}
-	static ConsoleDrawer<T>* init() {
-		static ConsoleDrawer<T> _drawer;
-		return &_drawer;
-	}
-	virtual void draw_border(uint count_rows, uint count_columns) {
-		COORD position;
-		position.X = _x_first_shift;
-		position.Y = _y_first_shift;
-		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
-		std::cout.width(1);
-
-		char top_bottom_border = '-';
-		char left_right_border = '|';
-		if (_symbol_for_border != 'q') {
-			top_bottom_border = _symbol_for_border;
-			left_right_border = _symbol_for_border;
-		}
-
-		std::cout << std::string(8 * count_columns + 2, top_bottom_border);
-		for (uint i = 0; i < count_rows; ++i) {
-			position.X = _x_first_shift;
-			position.Y = _y_first_shift + 1 + i;
-			SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
-			std::cout << left_right_border;
-			position.X += 8 * count_columns + 1;
-			SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
-			std::cout << left_right_border;
-		}
-		position.X = _x_first_shift;
-		position.Y += 1;
-		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
-		std::cout << std::string(8 * count_columns + 2, top_bottom_border);
-	}
-	virtual void draw_item(T elem, uint index_row, uint index_col) {
-		COORD position;
-		position.X = _x_first_shift + 8 * index_col + 1;
-		position.Y = _y_first_shift + index_row + 1;
-		SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), position);
-		std::cout.width(8);
-		std::cout << elem;
-	}
-};
-
-template <class T> class WindowDrawer : public IDrawer<T> {
-	uint _x_first_shift = 300;
-	uint _y_first_shift = 30;
-	uint _height_elem = 25;
-	uint _width_elem = 10;
-	uint _max_count_digits_number = 8;
-	bool _border = FALSE;
-	CPaintDC* _dc;
-
-public:
-	void set(bool border) {
-		_border = border;
-	}
-	void set(CPaintDC* dc) {
-		_dc = dc;
-	}
-	static WindowDrawer<T>* init() {
-		static WindowDrawer<T> _drawer;
-		return &_drawer;
-	}
-	virtual void draw_border(uint count_rows, uint count_columns) {
-		CPen* old_pen(nullptr), *new_pen(nullptr);
-		if (_border == FALSE) {
-			new_pen = new CPen(PS_SOLID, 1, RGB(255, 255, 255));
-		}
-		else {
-			new_pen = new CPen(PS_SOLID, 1, RGB(0, 0, 0));
-		}
-		old_pen = _dc->SelectObject(new_pen);
-
-		_dc->MoveTo(_x_first_shift, _y_first_shift);
-		_dc->LineTo(_x_first_shift + _max_count_digits_number *_width_elem * count_columns, _y_first_shift);
-		_dc->LineTo(_x_first_shift + _max_count_digits_number * _width_elem * count_columns,
-				_y_first_shift +  _height_elem * count_rows);
-		_dc->LineTo(_x_first_shift, _y_first_shift + _height_elem * count_rows);
-		_dc->LineTo(_x_first_shift, _y_first_shift);	
-
-		_dc->SelectObject(old_pen);
-		if (new_pen != nullptr) delete new_pen;
-	}
-	virtual void draw_item(T elem, uint index_row, uint index_col) {
-		std::ostringstream oss;
-		oss << elem;
-		_dc->TextOutW(_x_first_shift + 3 + _max_count_digits_number * _width_elem * index_col,
-				_y_first_shift + 3 + _height_elem * index_row, CString(oss.str().c_str()));
-	}
-};
-
-template <class T> class HtmlDrawer: public IDrawer<T> {
-	std::ofstream _fout;
-	std::string _name_file;
-	uint _prev_row;
-	uint _prev_col;
-	uint _count_rows;
-	uint _count_columns;
-
-	HtmlDrawer(std::string name_file) : _fout(name_file, std::ios::out),
-			_prev_row(0), _prev_col(0), _count_rows(0), _count_columns(0) {
-		_fout << "<table>" << std::endl;
-		_fout << "<tr> ";
-	}
-
-	void _draw_empty_item(uint row, uint col) {
-		if ((row < _prev_row) || ((col < _prev_col) && (row == _prev_row))) throw "matrix elements must be passed in sequence";
-		for (uint i = _prev_row; i <= row; ++i) {
-			uint begin_col = (i == _prev_row) ? (_prev_col + 1) : 0;
-			uint end_col = (i == row) ? col : _count_columns;
-			if ((begin_col == 0) && (_prev_col != 0)) _fout << "<tr> ";
-			for (uint j = begin_col; j < end_col; ++j) {
-				_fout << "<td></td> ";
+			for (uint j = 0; j < count_columns(); ++j) {
+				try {
+					draw_item(i, j);
+				}
+				catch (char*) {
+					continue;
+				}
 			}
-			if (end_col == _count_columns) _fout << "</tr>" << std::endl;
-		}
-	}
-
-	void _end_draw() {
-		if ((_prev_row != _count_rows) || (_prev_col != _count_columns)) _draw_empty_item(_count_rows - 1, _count_columns);
-		_fout << "</table>" << std::endl;
-		_fout.close();
-	}
-public:
-	static std::string default_name_file;
-
-	static HtmlDrawer<T>* init(std::string name_file) {
-		static HtmlDrawer<T> _drawer(name_file);
-		return &_drawer;
-	}
-
-	void reopen_file() {
-		_end_draw();
-		_fout.open(_name_file, std::ios::out); //TODO fix this open
-		_prev_row = 0;
-		_prev_col = 0;
-		_fout << "<table>" << std::endl;
-		_fout << "<tr> ";
-	}
-
-	virtual void draw_border(uint count_rows, uint count_columns) {
-		_count_rows = count_rows;
-		_count_columns = count_columns;
-	}
-
-	virtual void draw_item(T elem, uint index_row, uint index_col) {
-		_draw_empty_item(index_row, index_col);
-		_fout << "<td>" << elem << "</td> ";
-		_prev_row = index_row;
-		_prev_col = index_col;
-	}
-
-	~HtmlDrawer() {
-		_end_draw();
 	}
 };
 
-template <class T>
-std::string HtmlDrawer<T>::default_name_file("E:\\matrix.html");
 
-
-template <class T> class ChangeNumerationMatrix : public IMatrix<T>, IDrawable<T> {
-	SomeMatrix<T>* _source_matrix;
+////////////////decorators////////////////////////////////////////
+template <class T> class ChangeNumerationMatrix : public IMatrix<T>{
+	IDrawer<T>* _drawer;
+	IMatrix<T>* _source_matrix;
 	std::vector<uint> _changed_row;
 	std::vector<uint> _changed_columns;
 public:
-	ChangeNumerationMatrix(SomeMatrix<T>* _decor_matrix) : _parent(nullptr), _source_matrix(_decor_matrix) {
+	ChangeNumerationMatrix(IMatrix<T>* _decor_matrix) : _source_matrix(_decor_matrix) {
 		if (_source_matrix == nullptr) throw "matrix pointer is null";
 		restore();
 	}
 
-	virtual void draw_border(uint count_rows, uint count_columns) {
-		_drawer->draw_border(count_rows, count_columns);
-	}
-
-	virtual void draw_item(T elem, uint index_row, uint index_col) {
-		_drawer->draw_item(elem, _changed_row[index_row], _changed_columns[index_col]);
+	virtual void set_drawer(IDrawer<T>* drawer) {
+		_drawer = drawer;
 	}
 
 	virtual void draw() {
 		if (_drawer == nullptr) throw "drawer not set";
-
-		_source_matrix->set_drawer(this);
-		_source_matrix->draw();
+		_drawer->draw_border(count_rows(), count_columns());
+		for (uint i = 0; i < count_rows(); ++i)
+			for (uint j = 0; j < count_columns(); ++j) {
+				try {
+					_drawer->draw_item(get(i,j), i, j);
+				}
+				catch (char*) {
+					continue;
+				}
+			}
 	}
 
 	virtual T get(uint index_row, uint index_col) const {
@@ -410,8 +197,7 @@ public:
 	}
 };
 
-template <class T> class NullMatrix : public IMatrix<T>, IDrawer<T> {
-	IMatrix<T>* _parent;
+template <class T> class NullMatrix : public IMatrix<T> {
 	IDrawer<T>* _drawer;
 	IMatrix<T>* _source_matrix;
 public:
@@ -422,23 +208,22 @@ public:
 	virtual void set_drawer(IDrawer<T>* drawer) {
 		_drawer = drawer;
 	}
-
-	virtual void draw_border(uint count_rows, uint count_columns) {
-		_drawer->draw_border(count_rows, count_columns);
-	}
-
-	virtual void draw_item(T elem, uint index_row, uint index_col) {
-		if (index_col < index_row) _drawer->draw_item(elem, index_row, index_col);
-		else _drawer->draw_item(0, index_row, index_col);
-	}
-
 	virtual void draw() {
 		if (_drawer == nullptr) throw "drawer not set";
-		_source_matrix->set_drawer(this);
-		_source_matrix->draw();
+		_drawer->draw_border(count_rows(), count_columns());
+		for (uint i = 0; i < count_rows(); ++i)
+			for (uint j = 0; j < count_columns(); ++j) {
+				try {
+					_drawer->draw_item(get(i, j), i, j);
+				}
+				catch (char*) {
+					continue;
+				}
+			}
 	}
 
 	virtual T get(uint index_row, uint index_col) const {
+		if (index_row < index_col) return T();
 		return _source_matrix->get(index_row, index_col);
 	}
 
@@ -453,56 +238,65 @@ public:
 	uint count_columns() const {
 		return _source_matrix->count_columns();
 	}
-
-	virtual void set_parent(IMatrix<T>* parent) {
-		_parent = parent;
-	}
-	virtual IMatrix<T>* get_parent() {
-		return _parent;
-	}
 };
+//////////////////////////////////////////////////////////////////
 
-
-template <class T> class GroupMatrix : public IMatrix<T>, IDrawer<T> {
-	IMatrix<T>* _parent;
+template <class T> class GroupMatrix : public IMatrix<T> {
 	IDrawer<T>* _drawer;
 	std::vector<IMatrix<T>*> _group;
 
 	virtual void _size_adjustment(IMatrix<T>* matrix) = 0;
 protected:
-	virtual void adjust_matrix_shift(IMatrix<T>* matrix) = 0;
-	uint _matrix_shift_for_draw;
+	virtual void adjust_matrix_shift(IMatrix<T>* matrix) const = 0;
+	mutable uint _matrix_shift_for_draw;
 	uint _count_rows;
 	uint _count_columns;
 public:
 	void init(std::vector<IMatrix<T>*> group) {
-		_parent = nullptr; _group = group; _count_rows = 0; _count_columns = 0;
+		_group = group; _count_rows = 0; _count_columns = 0;
 		for (uint i = 0; i < group.size(); ++i) {
 			_size_adjustment(_group[i]);
-			_group[i]->set_parent(this);
 		}
 	}
-	virtual void set_parent(IMatrix<T>* parent) {
-		_parent = parent;
-	}
-	virtual IMatrix<T>* get_parent() {
-		return _parent;
+	virtual ~GroupMatrix() {
+		for (int i = (int)(_group.size() - 1); i >= 0; --i)
+			delete _group[i];
 	}
 	void set(IMatrix<T>* matrix) {
 		_group.push_back(matrix);
 		_size_adjustment(matrix);
 	}
 	virtual T get(uint index_row, uint index_col) const {
+		_matrix_shift_for_draw = 0;
 		if ((index_row >= _count_rows) || (index_col >= _count_columns)) throw "element with this position not belong matrix";
 		for (uint i = 0; i < _group.size(); ++i) {
 			try {
-				return _group[i]->get(index_row, index_col);
+				return _group[i]->get(index_row, index_col - _matrix_shift_for_draw);
 			}
 			catch (char*) {
+				adjust_matrix_shift(_group[i]);
 				continue;
 			}
 		}
-		return T();
+		_matrix_shift_for_draw = 0;
+		throw "sparse element";
+	}
+
+	virtual void draw() {
+		if (_drawer == nullptr) throw "drawer not set";
+		_matrix_shift_for_draw = 0;
+		for (uint i = 0; i < _group.size(); ++i) {
+			for (uint j = 0; j < _group[i]->count_rows(); ++j)
+				for (uint k = 0; k < _group[i]->count_columns(); ++k) {
+					try {
+						_drawer->draw_item(_group[i]->get(j, k), j, k + _matrix_shift_for_draw);
+					}
+					catch (char*) {
+						continue;
+					}
+				}
+			adjust_matrix_shift(_group[i]);
+		}
 	}
 	virtual bool set(uint index_row, uint index_col, T value) {
 		if ((index_row >= _count_rows) || (index_col >= _count_columns)) return FALSE;
@@ -520,27 +314,6 @@ public:
 	virtual void set_drawer(IDrawer<T>* drawer) {
 		_drawer = drawer;
 	}
-	virtual void draw_border(uint count_rows, uint count_columns) {
-		return;
-	}
-	virtual ~GroupMatrix() {
-		for (int i = (int)(_group.size() - 1); i >= 0; --i)
-			delete _group[i];
-	}
-
-	virtual void draw() {
-		if (nullptr == _parent) _drawer->draw_border(_count_rows, _count_columns);
-		_matrix_shift_for_draw = 0;
-		for (uint i = 0; i < _group.size(); ++i) {
-			_group[i]->set_drawer(this);
-			_group[i]->draw();
-			adjust_matrix_shift(_group[i]);
-		}
-	}
-	virtual void draw_item(T elem, uint index_row, uint index_col) {
-		_drawer->draw_item(elem, index_row, index_col);
-	}
-
 };
 
 template <class T> class VerticalGroupMatrix : public GroupMatrix<T> {
@@ -552,12 +325,12 @@ public:
 	VerticalGroupMatrix(std::vector<IMatrix<T>*> group) {
 		GroupMatrix::init(group);
 	}
-	virtual void adjust_matrix_shift(IMatrix<T>* matrix) {
+	virtual void adjust_matrix_shift(IMatrix<T>* matrix) const {
 		_matrix_shift_for_draw += matrix->count_rows();
 	}
-	virtual void draw_item(T elem, uint index_row, uint index_col) {
+	/*virtual void draw_item(T elem, uint index_row, uint index_col) {
 		GroupMatrix<T>::draw_item(elem, index_row + _matrix_shift_for_draw, index_col);
-	}
+	}*/
 };
 
 template <class T> class GorizontalGroupMatrix : public GroupMatrix<T> {
@@ -569,10 +342,10 @@ public:
 	GorizontalGroupMatrix(std::vector<IMatrix<T>*> group) {
 		GroupMatrix::init(group);
 	}
-	virtual void adjust_matrix_shift(IMatrix<T>* matrix) {
+	virtual void adjust_matrix_shift(IMatrix<T>* matrix) const {
 		_matrix_shift_for_draw += matrix->count_columns();
 	}
-	virtual void draw_item(T elem, uint index_row, uint index_col) {
+	/*virtual void draw_item(T elem, uint index_row, uint index_col) {
 		GroupMatrix<T>::draw_item(elem, index_row, index_col + _matrix_shift_for_draw);
-	}
+	}*/
 };
