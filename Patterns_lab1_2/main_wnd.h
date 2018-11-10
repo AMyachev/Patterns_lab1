@@ -8,8 +8,9 @@
 #define IDC_BUTTON_GENERATE_SPARSE_MATRIX 101
 #define IDC_BUTTON_RENUMBER 102
 #define IDC_BUTTON_RESTORE 103
-#define IDC_BUTTON_GENERATE_GROUP_MATRIX 104
-#define IDC_CHECK_BOX_BORDER 105
+#define IDC_BUTTON_GENERATE_GORIZONTAL_GROUP_MATRIX 104
+#define IDC_BUTTON_GENERATE_VERTICAL_GROUP_MATRIX 105
+#define IDC_CHECK_BOX_BORDER 106
 
 
 class CMainWnd : public CFrameWnd
@@ -27,7 +28,8 @@ private:
 	CButton* btn_gnrt_sprs_mtrx;
 	CButton* btn_renumber;
 	CButton* btn_restore;
-	CButton* btn_gnrt_grp_mtrx;
+	CButton* btn_gnrt_grznt_grp_mtrx;
+	CButton* btn_gnrt_vrtcl_grp_mtrx;
 	CButton* check_box_brdr;
 	CFont* m_pFont;
 	ConsoleDrawer<int>* console_drawer;
@@ -37,6 +39,6 @@ private:
 	SparseMatrix<int>* sparse_matrix;
 	IMatrix<int>* prev_matrix;
 	ChangeNumerationMatrix<int>* decorator_matrix;
-	GroupMatrix<int>* goriz_group_matrix;
+	GroupMatrix<int>* group_matrix;
 	DECLARE_MESSAGE_MAP();
 };

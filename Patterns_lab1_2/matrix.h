@@ -18,7 +18,7 @@ public:
 	virtual void set_drawer(IDrawer<T>* drawer) = 0;
 };
 
-template <class T> class IMatrix : public IDrawable<T> {
+template <class T> class IMatrix {
 public:
 	virtual void set_parent(IMatrix<T>* parent) = 0;
 	virtual IMatrix<T>* get_parent() = 0;
@@ -29,7 +29,7 @@ public:
 	virtual ~IMatrix() {}
 };
 
-template <class T> class SomeMatrix : public IMatrix<T> {
+template <class T> class SomeMatrix : public IMatrix<T>, IDrawable<T> {
 	IMatrix<T>* _parent;
 	IDrawer<T>* _drawer;
 	std::vector<IVector<T>*> _data;
@@ -343,20 +343,14 @@ template <class T>
 std::string HtmlDrawer<T>::default_name_file("E:\\matrix.html");
 
 
-template <class T> class ChangeNumerationMatrix : public IMatrix<T>, IDrawer<T> {
-	IMatrix<T>* _parent;
-	IDrawer<T>* _drawer;
-	IMatrix<T>* _source_matrix;
+template <class T> class ChangeNumerationMatrix : public IMatrix<T>, IDrawable<T> {
+	SomeMatrix<T>* _source_matrix;
 	std::vector<uint> _changed_row;
 	std::vector<uint> _changed_columns;
 public:
-	ChangeNumerationMatrix(IMatrix<T>* _decor_matrix) : _parent(nullptr), _source_matrix(_decor_matrix) {
+	ChangeNumerationMatrix(SomeMatrix<T>* _decor_matrix) : _parent(nullptr), _source_matrix(_decor_matrix) {
 		if (_source_matrix == nullptr) throw "matrix pointer is null";
 		restore();
-	}
-
-	virtual void set_drawer(IDrawer<T>* drawer) {
-		_drawer = drawer;
 	}
 
 	virtual void draw_border(uint count_rows, uint count_columns) {
@@ -369,6 +363,7 @@ public:
 
 	virtual void draw() {
 		if (_drawer == nullptr) throw "drawer not set";
+
 		_source_matrix->set_drawer(this);
 		_source_matrix->draw();
 	}
@@ -413,7 +408,52 @@ public:
 	uint count_columns() const {
 		return _source_matrix->count_columns();
 	}
-	
+};
+
+template <class T> class NullMatrix : public IMatrix<T>, IDrawer<T> {
+	IMatrix<T>* _parent;
+	IDrawer<T>* _drawer;
+	IMatrix<T>* _source_matrix;
+public:
+	NullMatrix(IMatrix<T>* _decor_matrix) : _parent(nullptr), _source_matrix(_decor_matrix) {
+		if (_source_matrix == nullptr) throw "matrix pointer is null";
+	}
+
+	virtual void set_drawer(IDrawer<T>* drawer) {
+		_drawer = drawer;
+	}
+
+	virtual void draw_border(uint count_rows, uint count_columns) {
+		_drawer->draw_border(count_rows, count_columns);
+	}
+
+	virtual void draw_item(T elem, uint index_row, uint index_col) {
+		if (index_col < index_row) _drawer->draw_item(elem, index_row, index_col);
+		else _drawer->draw_item(0, index_row, index_col);
+	}
+
+	virtual void draw() {
+		if (_drawer == nullptr) throw "drawer not set";
+		_source_matrix->set_drawer(this);
+		_source_matrix->draw();
+	}
+
+	virtual T get(uint index_row, uint index_col) const {
+		return _source_matrix->get(index_row, index_col);
+	}
+
+	virtual bool set(uint index_row, uint index_col, T value) {
+		return _source_matrix->set(index_row, index_col, value);
+	}
+
+	uint count_rows() const {
+		return _source_matrix->count_rows();
+	}
+
+	uint count_columns() const {
+		return _source_matrix->count_columns();
+	}
+
 	virtual void set_parent(IMatrix<T>* parent) {
 		_parent = parent;
 	}
@@ -421,6 +461,7 @@ public:
 		return _parent;
 	}
 };
+
 
 template <class T> class GroupMatrix : public IMatrix<T>, IDrawer<T> {
 	IMatrix<T>* _parent;
