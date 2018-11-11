@@ -54,7 +54,8 @@ public:
 		}
 	}
 	virtual T get(uint index_row, uint index_col) const {
-		if ((index_row >= _count_rows) || (index_col >= _count_col)) throw "element with this position not belong matrix";
+		if ((index_row >= _count_rows) || (index_col >= _count_col) || (index_row < 0) || (index_col < 0)) 
+			throw "element with this position not belong matrix";
 		return _data[index_row]->get(index_col);
 	}
 	virtual bool set(uint index_row, uint index_col, T value) {
@@ -156,6 +157,8 @@ public:
 	}
 
 	virtual T get(uint index_row, uint index_col) const {
+		if ((index_row >= count_rows()) || (index_col >= count_columns()) || (index_row < 0) || (index_col < 0))
+			throw "element with this position not belong matrix";
 		return _source_matrix->get(_changed_row[index_row], _changed_columns[index_col]);
 	}
 
@@ -241,40 +244,49 @@ public:
 };
 //////////////////////////////////////////////////////////////////
 
-template <class T> class GroupMatrix : public IMatrix<T> {
+template <class T> class GorizontalGroupMatrix : public IMatrix<T> {
 	IDrawer<T>* _drawer;
 	std::vector<IMatrix<T>*> _group;
-
-	virtual void _size_adjustment(IMatrix<T>* matrix) = 0;
-protected:
-	virtual void adjust_matrix_shift(IMatrix<T>* matrix) const = 0;
 	mutable uint _matrix_shift_for_draw;
 	uint _count_rows;
 	uint _count_columns;
+
+	virtual void _size_adjustment(IMatrix<T>* matrix) {
+		_count_columns += matrix->count_columns();
+		if (matrix->count_rows() > _count_rows) _count_rows = matrix->count_rows();
+	}
+	virtual void _adjust_matrix_shift(IMatrix<T>* matrix) const {
+		_matrix_shift_for_draw += matrix->count_columns();
+	}
 public:
+	GorizontalGroupMatrix(std::vector<IMatrix<T>*> group) {
+		init(group);
+	}
 	void init(std::vector<IMatrix<T>*> group) {
 		_group = group; _count_rows = 0; _count_columns = 0;
 		for (uint i = 0; i < group.size(); ++i) {
 			_size_adjustment(_group[i]);
 		}
 	}
-	virtual ~GroupMatrix() {
+	virtual ~GorizontalGroupMatrix() {
 		for (int i = (int)(_group.size() - 1); i >= 0; --i)
 			delete _group[i];
 	}
-	void set(IMatrix<T>* matrix) {
+	void add(IMatrix<T>* matrix) {
 		_group.push_back(matrix);
 		_size_adjustment(matrix);
 	}
+
 	virtual T get(uint index_row, uint index_col) const {
 		_matrix_shift_for_draw = 0;
-		if ((index_row >= _count_rows) || (index_col >= _count_columns)) throw "element with this position not belong matrix";
+		if ((index_row >= count_rows()) || (index_col >= count_columns()) || (index_row < 0) || (index_col < 0))
+			throw "element with this position not belong matrix";
 		for (uint i = 0; i < _group.size(); ++i) {
 			try {
 				return _group[i]->get(index_row, index_col - _matrix_shift_for_draw);
 			}
 			catch (char*) {
-				adjust_matrix_shift(_group[i]);
+				_adjust_matrix_shift(_group[i]);
 				continue;
 			}
 		}
@@ -284,6 +296,7 @@ public:
 
 	virtual void draw() {
 		if (_drawer == nullptr) throw "drawer not set";
+		_drawer->draw_border(_count_rows, _count_columns);
 		_matrix_shift_for_draw = 0;
 		for (uint i = 0; i < _group.size(); ++i) {
 			for (uint j = 0; j < _group[i]->count_rows(); ++j)
@@ -295,14 +308,18 @@ public:
 						continue;
 					}
 				}
-			adjust_matrix_shift(_group[i]);
+			_adjust_matrix_shift(_group[i]);
 		}
+		_matrix_shift_for_draw = 0;
 	}
 	virtual bool set(uint index_row, uint index_col, T value) {
+		_matrix_shift_for_draw = 0;
 		if ((index_row >= _count_rows) || (index_col >= _count_columns)) return FALSE;
 		for (uint i = 0; i < _group.size(); ++i) {
-			if (TRUE == _group[i]->set(index_row, index_col, value))  return TRUE;
+			if (TRUE == _group[i]->set(index_row, index_col - _matrix_shift_for_draw, value))  return TRUE;
+			_adjust_matrix_shift(_group[i]);
 		}
+		_matrix_shift_for_draw = 0;
 		return FALSE;
 	}
 	virtual uint count_rows() const {
@@ -315,37 +332,91 @@ public:
 		_drawer = drawer;
 	}
 };
+// пофиксить различия между вертикальной и горизонтальной
+template <class T> class VerticalGroupMatrix : public IMatrix<T> {
+	IDrawer<T>* _drawer;
+	std::vector<IMatrix<T>*> _group;
+	mutable uint _matrix_shift_for_draw;
+	uint _count_rows;
+	uint _count_columns;
 
-template <class T> class VerticalGroupMatrix : public GroupMatrix<T> {
 	virtual void _size_adjustment(IMatrix<T>* matrix) {
 		_count_rows += matrix->count_rows();
 		if (matrix->count_columns() > _count_columns) _count_columns = matrix->count_columns();
 	}
-public:
-	VerticalGroupMatrix(std::vector<IMatrix<T>*> group) {
-		GroupMatrix::init(group);
-	}
-	virtual void adjust_matrix_shift(IMatrix<T>* matrix) const {
+	virtual void _adjust_matrix_shift(IMatrix<T>* matrix) const {
 		_matrix_shift_for_draw += matrix->count_rows();
 	}
-	/*virtual void draw_item(T elem, uint index_row, uint index_col) {
-		GroupMatrix<T>::draw_item(elem, index_row + _matrix_shift_for_draw, index_col);
-	}*/
-};
-
-template <class T> class GorizontalGroupMatrix : public GroupMatrix<T> {
-	virtual void _size_adjustment(IMatrix<T>* matrix) {
-		_count_columns += matrix->count_columns();
-		if (matrix->count_rows() > _count_rows) _count_rows = matrix->count_rows();
-	}
 public:
-	GorizontalGroupMatrix(std::vector<IMatrix<T>*> group) {
-		GroupMatrix::init(group);
+	VerticalGroupMatrix(std::vector<IMatrix<T>*> group) {
+		init(group);
 	}
-	virtual void adjust_matrix_shift(IMatrix<T>* matrix) const {
-		_matrix_shift_for_draw += matrix->count_columns();
+	void init(std::vector<IMatrix<T>*> group) {
+		_group = group; _count_rows = 0; _count_columns = 0;
+		for (uint i = 0; i < group.size(); ++i) {
+			_size_adjustment(_group[i]);
+		}
 	}
-	/*virtual void draw_item(T elem, uint index_row, uint index_col) {
-		GroupMatrix<T>::draw_item(elem, index_row, index_col + _matrix_shift_for_draw);
-	}*/
+	virtual ~VerticalGroupMatrix() {
+		for (int i = (int)(_group.size() - 1); i >= 0; --i)
+			delete _group[i];
+	}
+	void add(IMatrix<T>* matrix) {
+		_group.push_back(matrix);
+		_size_adjustment(matrix);
+	}
+
+	virtual T get(uint index_row, uint index_col) const {
+		_matrix_shift_for_draw = 0;
+		if ((index_row >= count_rows()) || (index_col >= count_columns()) || (index_row < 0) || (index_col < 0))
+			throw "element with this position not belong matrix";
+		for (uint i = 0; i < _group.size(); ++i) {
+			try {
+				return _group[i]->get(index_row - _matrix_shift_for_draw, index_col);
+			}
+			catch (char*) {
+				_adjust_matrix_shift(_group[i]);
+				continue;
+			}
+		}
+		_matrix_shift_for_draw = 0;
+		throw "sparse element";
+	}
+	virtual void draw() {
+		if (_drawer == nullptr) throw "drawer not set";
+		_drawer->draw_border(_count_rows, _count_columns);
+		_matrix_shift_for_draw = 0;
+		for (uint i = 0; i < _group.size(); ++i) {
+			for (uint j = 0; j < _group[i]->count_rows(); ++j)
+				for (uint k = 0; k < _group[i]->count_columns(); ++k) {
+					try {
+						_drawer->draw_item(_group[i]->get(j, k), j + _matrix_shift_for_draw, k);
+					}
+					catch (char*) {
+						continue;
+					}
+				}
+			_adjust_matrix_shift(_group[i]);
+		}
+		_matrix_shift_for_draw = 0;
+	}
+	virtual bool set(uint index_row, uint index_col, T value) {
+		_matrix_shift_for_draw = 0;
+		if ((index_row >= _count_rows) || (index_col >= _count_columns)) return FALSE;
+		for (uint i = 0; i < _group.size(); ++i) {
+			if (TRUE == _group[i]->set(index_row - _matrix_shift_for_draw, index_col, value))  return TRUE;
+			_adjust_matrix_shift(_group[i]);
+		}
+		_matrix_shift_for_draw = 0;
+		return FALSE;
+	}
+	virtual uint count_rows() const {
+		return _count_rows;
+	}
+	virtual uint count_columns() const {
+		return _count_columns;
+	}
+	virtual void set_drawer(IDrawer<T>* drawer) {
+		_drawer = drawer;
+	}
 };

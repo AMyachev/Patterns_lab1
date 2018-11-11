@@ -201,7 +201,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 	case IDC_BUTTON_GENERATE_VERTICAL_GROUP_MATRIX:
 		delete group_matrix;
 		group_matrix = new VerticalGroupMatrix<int>({
-			new ChangeNumerationMatrix<int>(
+			new ChangeNumerationMatrix<int>(  //fix this memory leak
 				new GorizontalGroupMatrix<int>({
 					MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(2, 2), 4, 3),
 					MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(4, 3), 12, 10),

@@ -39,6 +39,6 @@ private:
 	SparseMatrix<int>* sparse_matrix;
 	IMatrix<int>* prev_matrix;
 	ChangeNumerationMatrix<int>* decorator_matrix;
-	GroupMatrix<int>* group_matrix;
+	IMatrix<int>* group_matrix;
 	DECLARE_MESSAGE_MAP();
 };
