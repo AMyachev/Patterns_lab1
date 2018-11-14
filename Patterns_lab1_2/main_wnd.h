@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mfc.h"
-#include "matrix.h"
+#include "factory.h"
 #include "matrix_utility.h"
 
 #define IDC_BUTTON_GENERATE_SIMPLE_MATRIX 100
@@ -40,5 +40,6 @@ private:
 	IMatrix<int>* prev_matrix;
 	ChangeNumerationMatrix<int>* decorator_matrix;
 	IMatrix<int>* group_matrix;
+	AbstractMatrixFactory<int>* matrix_factory;
 	DECLARE_MESSAGE_MAP();
 };

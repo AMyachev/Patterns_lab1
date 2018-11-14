@@ -89,12 +89,7 @@ CMainWnd::CMainWnd()
 		window_drawer->set(bool(FALSE));
 	}
 	html_drawer = HtmlDrawer<int>::init(HtmlDrawer<int>::default_name_file);
-
-	simple_matrix = NULL;
-	sparse_matrix = NULL;
-	prev_matrix = NULL;
-	decorator_matrix = NULL;
-	group_matrix = NULL;
+	matrix_factory = MatrixFactory<int>::init();
 }
 
 CMainWnd::~CMainWnd()
@@ -105,19 +100,14 @@ CMainWnd::~CMainWnd()
 	if (check_box_brdr != NULL) delete check_box_brdr;
 	if (btn_gnrt_grznt_grp_mtrx != NULL) delete btn_gnrt_grznt_grp_mtrx;
 	if (btn_gnrt_vrtcl_grp_mtrx != NULL) delete btn_gnrt_vrtcl_grp_mtrx;
-	if (simple_matrix != NULL) delete simple_matrix;
-	if (sparse_matrix != NULL) delete sparse_matrix;
 	if (btn_renumber != NULL) delete btn_renumber;
 	if (btn_restore != NULL) delete btn_restore;
-	if (decorator_matrix != NULL) delete decorator_matrix;
-	if (group_matrix != NULL) delete group_matrix;
 }
 
 void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 	switch (BttId) {
 	case IDC_BUTTON_GENERATE_SIMPLE_MATRIX:
-		if (simple_matrix != NULL) delete simple_matrix;
-		simple_matrix = new SimpleMatrix<int>(3, 3);
+		simple_matrix = matrix_factory->create_simple_matrix(3, 3);
 		MatrixInitiator<int>::fill_matrix(simple_matrix, 5, 1000);
 		simple_matrix->set_drawer(console_drawer);
 		//console//
@@ -132,13 +122,11 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		simple_matrix->draw();
 		html_drawer->reopen_file();
 		//for_decorator//
-		delete decorator_matrix;
-		decorator_matrix = new ChangeNumerationMatrix<int>(simple_matrix);
+		decorator_matrix = matrix_factory->create_change_numeration_matrix(simple_matrix);
 		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_BUTTON_GENERATE_SPARSE_MATRIX:
-		if (sparse_matrix != NULL) delete sparse_matrix;
-		sparse_matrix = new SparseMatrix<int>(5, 5);
+		sparse_matrix = matrix_factory->create_sparse_matrix(5, 5);
 		MatrixInitiator<int>::fill_matrix(sparse_matrix, 20, 100);
 		sparse_matrix->set_drawer(console_drawer);
 		//console//
@@ -153,8 +141,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		sparse_matrix->draw();
 		html_drawer->reopen_file();
 		//for_decorator//
-		delete decorator_matrix;
-		decorator_matrix = new ChangeNumerationMatrix<int>(sparse_matrix);
+		decorator_matrix = matrix_factory->create_change_numeration_matrix(sparse_matrix);
 		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_BUTTON_RENUMBER:
@@ -178,12 +165,11 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		}
 		break;
 	case IDC_BUTTON_GENERATE_GORIZONTAL_GROUP_MATRIX:
-		delete group_matrix;
-		group_matrix = new GorizontalGroupMatrix<int>({
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(2, 2), 4, 10),
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(3, 3), 9, 10),
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(5, 1), 5, 100),
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(1, 1), 1, 10)
+		group_matrix = matrix_factory->create_gorizontal_group_matrix({
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(2, 2), 4, 10),
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(3, 3), 9, 10),
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(5, 1), 5, 100),
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(1, 1), 1, 10)
 		});
 		//console//
 		group_matrix->set_drawer(console_drawer);
@@ -194,25 +180,23 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		drawing_matrix = 3;
 		this->Invalidate();
 		//for_decorator//
-		delete decorator_matrix;
-		decorator_matrix = new ChangeNumerationMatrix<int>(group_matrix);
+		decorator_matrix = matrix_factory->create_change_numeration_matrix(group_matrix);
 		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_BUTTON_GENERATE_VERTICAL_GROUP_MATRIX:
-		delete group_matrix;
-		group_matrix = new VerticalGroupMatrix<int>({
-			new ChangeNumerationMatrix<int>(  //fix this memory leak
-				new GorizontalGroupMatrix<int>({
-					MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(2, 2), 4, 3),
-					MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(4, 3), 12, 10),
-					MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(1, 3), 3, 100)
+		group_matrix = matrix_factory->create_vertical_group_matrix({
+			matrix_factory->create_change_numeration_matrix(
+			matrix_factory->create_gorizontal_group_matrix({
+					MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(2, 2), 4, 3),
+					MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(4, 3), 12, 10),
+					MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(1, 3), 3, 100)
 				})
 			),
-			new GorizontalGroupMatrix<int>({
-				MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(2, 4), 8, 3),
-				MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(2, 3), 6, 10),
+			matrix_factory->create_gorizontal_group_matrix({
+				MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(2, 4), 8, 3),
+				MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(2, 3), 6, 10),
 			}),
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(1, 1), 1, 1000)
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(1, 1), 1, 1000)
 		});
 		//console//
 		group_matrix->set_drawer(console_drawer);
@@ -223,8 +207,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		drawing_matrix = 3;
 		this->Invalidate();
 		//for_decorator//
-		delete decorator_matrix;
-		decorator_matrix = new ChangeNumerationMatrix<int>(group_matrix);
+		decorator_matrix = matrix_factory->create_change_numeration_matrix(group_matrix);
 		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_CHECK_BOX_BORDER:

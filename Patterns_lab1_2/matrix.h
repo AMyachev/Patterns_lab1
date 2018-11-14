@@ -204,7 +204,7 @@ template <class T> class NullMatrix : public IMatrix<T> {
 	IDrawer<T>* _drawer;
 	IMatrix<T>* _source_matrix;
 public:
-	NullMatrix(IMatrix<T>* _decor_matrix) : _parent(nullptr), _source_matrix(_decor_matrix) {
+	NullMatrix(IMatrix<T>* _decor_matrix) : _source_matrix(_decor_matrix) {
 		if (_source_matrix == nullptr) throw "matrix pointer is null";
 	}
 
@@ -268,10 +268,6 @@ public:
 			_size_adjustment(_group[i]);
 		}
 	}
-	virtual ~GorizontalGroupMatrix() {
-		for (int i = (int)(_group.size() - 1); i >= 0; --i)
-			delete _group[i];
-	}
 	void add(IMatrix<T>* matrix) {
 		_group.push_back(matrix);
 		_size_adjustment(matrix);
@@ -332,7 +328,7 @@ public:
 		_drawer = drawer;
 	}
 };
-// пофиксить различия между вертикальной и горизонтальной
+
 template <class T> class VerticalGroupMatrix : public IMatrix<T> {
 	IDrawer<T>* _drawer;
 	std::vector<IMatrix<T>*> _group;
@@ -356,10 +352,6 @@ public:
 		for (uint i = 0; i < group.size(); ++i) {
 			_size_adjustment(_group[i]);
 		}
-	}
-	virtual ~VerticalGroupMatrix() {
-		for (int i = (int)(_group.size() - 1); i >= 0; --i)
-			delete _group[i];
 	}
 	void add(IMatrix<T>* matrix) {
 		_group.push_back(matrix);
