@@ -151,6 +151,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="drawer.h" />
+    <ClInclude Include="factory.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="main_wnd.h" />
     <ClInclude Include="matrix.h" />

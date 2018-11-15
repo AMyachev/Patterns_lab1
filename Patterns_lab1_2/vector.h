@@ -18,7 +18,7 @@ public:
 	SimpleVector(std::vector<T> _vect) : _vector(_vect) {}
 	SimpleVector(uint size) : _vector(size) {}
 	virtual T get(uint index) const {
-		if (index >= size()) throw "Element not found";
+		if ((index >= size()) || (index < 0)) throw "Element not found";
 		return _vector[index];
 	}
 	virtual bool set(uint index, T value) {
@@ -46,6 +46,7 @@ public:
 		}
 	}
 	virtual T get(uint index) const {
+		if ((index >= size()) || (index < 0)) throw "Element not found";
 		for (auto iter = _map.begin(); iter != _map.end(); ++iter) {
 			if ((*iter).first < index) {
 				continue;

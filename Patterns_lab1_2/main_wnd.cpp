@@ -35,8 +35,8 @@ void CMainWnd::OnPaint() {
 		sparse_matrix->draw();
 		break;
 	case 3:
-		goriz_group_matrix->set_drawer(window_drawer);
-		goriz_group_matrix->draw();
+		group_matrix->set_drawer(window_drawer);
+		group_matrix->draw();
 		break;
 	}
 	window_drawer->set(nullptr);
@@ -68,10 +68,15 @@ CMainWnd::CMainWnd()
 		CRect(50, 190, 200, 230), this, IDC_BUTTON_RESTORE);
 	btn_restore->SetFont(m_pFont);
 
-	btn_gnrt_grp_mtrx = new CButton();
-	if (btn_gnrt_grp_mtrx != NULL) btn_gnrt_grp_mtrx->Create(L"Generate Group Matrix", WS_CHILD | WS_VISIBLE | SS_CENTER,
-		CRect(50, 240, 200, 280), this, IDC_BUTTON_GENERATE_GROUP_MATRIX);
-	btn_gnrt_grp_mtrx->SetFont(m_pFont);
+	btn_gnrt_grznt_grp_mtrx = new CButton();
+	if (btn_gnrt_grznt_grp_mtrx != NULL) btn_gnrt_grznt_grp_mtrx->Create(L"Generate Goriz. Group Matrix", WS_CHILD | WS_VISIBLE | SS_CENTER,
+		CRect(30, 240, 230, 280), this, IDC_BUTTON_GENERATE_GORIZONTAL_GROUP_MATRIX);
+	btn_gnrt_grznt_grp_mtrx->SetFont(m_pFont);
+
+	btn_gnrt_vrtcl_grp_mtrx = new CButton();
+	if (btn_gnrt_vrtcl_grp_mtrx != NULL) btn_gnrt_vrtcl_grp_mtrx->Create(L"Generate Vertical Group Matrix", WS_CHILD | WS_VISIBLE | SS_CENTER,
+		CRect(30, 290, 230, 330), this, IDC_BUTTON_GENERATE_VERTICAL_GROUP_MATRIX);
+	btn_gnrt_vrtcl_grp_mtrx->SetFont(m_pFont);
 
 	check_box_brdr = new CButton();
 	check_box_brdr->Create(L"visible border", WS_VISIBLE | BS_AUTOCHECKBOX | WS_CHILD, CRect(70, 60, 220, 80), this, IDC_CHECK_BOX_BORDER);
@@ -84,12 +89,7 @@ CMainWnd::CMainWnd()
 		window_drawer->set(bool(FALSE));
 	}
 	html_drawer = HtmlDrawer<int>::init(HtmlDrawer<int>::default_name_file);
-
-	simple_matrix = NULL;
-	sparse_matrix = NULL;
-	prev_matrix = NULL;
-	decorator_matrix = NULL;
-	goriz_group_matrix = NULL;
+	matrix_factory = MatrixFactory<int>::init();
 }
 
 CMainWnd::~CMainWnd()
@@ -98,20 +98,16 @@ CMainWnd::~CMainWnd()
 	if (btn_gnrt_smpl_mtrx != NULL) delete btn_gnrt_smpl_mtrx;
 	if (btn_gnrt_sprs_mtrx != NULL) delete btn_gnrt_sprs_mtrx;
 	if (check_box_brdr != NULL) delete check_box_brdr;
-	if (btn_gnrt_grp_mtrx != NULL) delete btn_gnrt_grp_mtrx;
-	if (simple_matrix != NULL) delete simple_matrix;
-	if (sparse_matrix != NULL) delete sparse_matrix;
+	if (btn_gnrt_grznt_grp_mtrx != NULL) delete btn_gnrt_grznt_grp_mtrx;
+	if (btn_gnrt_vrtcl_grp_mtrx != NULL) delete btn_gnrt_vrtcl_grp_mtrx;
 	if (btn_renumber != NULL) delete btn_renumber;
 	if (btn_restore != NULL) delete btn_restore;
-	if (decorator_matrix != NULL) delete decorator_matrix;
-	if (goriz_group_matrix != NULL) delete goriz_group_matrix;
 }
 
 void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 	switch (BttId) {
 	case IDC_BUTTON_GENERATE_SIMPLE_MATRIX:
-		if (simple_matrix != NULL) delete simple_matrix;
-		simple_matrix = new SimpleMatrix<int>(3, 3);
+		simple_matrix = matrix_factory->create_simple_matrix(3, 3);
 		MatrixInitiator<int>::fill_matrix(simple_matrix, 5, 1000);
 		simple_matrix->set_drawer(console_drawer);
 		//console//
@@ -126,13 +122,11 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		simple_matrix->draw();
 		html_drawer->reopen_file();
 		//for_decorator//
-		delete decorator_matrix;
-		decorator_matrix = new ChangeNumerationMatrix<int>(simple_matrix);
+		decorator_matrix = matrix_factory->create_change_numeration_matrix(simple_matrix);
 		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_BUTTON_GENERATE_SPARSE_MATRIX:
-		if (sparse_matrix != NULL) delete sparse_matrix;
-		sparse_matrix = new SparseMatrix<int>(5, 5);
+		sparse_matrix = matrix_factory->create_sparse_matrix(5, 5);
 		MatrixInitiator<int>::fill_matrix(sparse_matrix, 20, 100);
 		sparse_matrix->set_drawer(console_drawer);
 		//console//
@@ -147,8 +141,7 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 		sparse_matrix->draw();
 		html_drawer->reopen_file();
 		//for_decorator//
-		delete decorator_matrix;
-		decorator_matrix = new ChangeNumerationMatrix<int>(sparse_matrix);
+		decorator_matrix = matrix_factory->create_change_numeration_matrix(sparse_matrix);
 		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_BUTTON_RENUMBER:
@@ -171,25 +164,50 @@ void CMainWnd::OnAllBtnsClick(unsigned int BttId) {
 			decorator_matrix->draw();
 		}
 		break;
-	case IDC_BUTTON_GENERATE_GROUP_MATRIX:
-		delete goriz_group_matrix;
-		goriz_group_matrix = new GorizontalGroupMatrix<int>({
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(2, 2), 4, 10),
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(3, 3), 9, 10),
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(5, 1), 5, 100),
-			MatrixInitiator<int>::fill_matrix(new SimpleMatrix<int>(1, 1), 1, 10)
+	case IDC_BUTTON_GENERATE_GORIZONTAL_GROUP_MATRIX:
+		group_matrix = matrix_factory->create_gorizontal_group_matrix({
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(2, 2), 4, 10),
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(3, 3), 9, 10),
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(5, 1), 5, 100),
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(1, 1), 1, 10)
 		});
 		//console//
-		goriz_group_matrix->set_drawer(console_drawer);
+		group_matrix->set_drawer(console_drawer);
 		system("cls");
-		goriz_group_matrix->draw();
-		prev_matrix = goriz_group_matrix;
+		group_matrix->draw();
+		prev_matrix = group_matrix;
 		//window//
 		drawing_matrix = 3;
 		this->Invalidate();
 		//for_decorator//
-		delete decorator_matrix;
-		decorator_matrix = new ChangeNumerationMatrix<int>(goriz_group_matrix);
+		decorator_matrix = matrix_factory->create_change_numeration_matrix(group_matrix);
+		decorator_matrix->set_drawer(console_drawer);
+		break;
+	case IDC_BUTTON_GENERATE_VERTICAL_GROUP_MATRIX:
+		group_matrix = matrix_factory->create_vertical_group_matrix({
+			matrix_factory->create_change_numeration_matrix(
+			matrix_factory->create_gorizontal_group_matrix({
+					MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(2, 2), 4, 3),
+					MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(4, 3), 12, 10),
+					MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(1, 3), 3, 100)
+				})
+			),
+			matrix_factory->create_gorizontal_group_matrix({
+				MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(2, 4), 8, 3),
+				MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(2, 3), 6, 10),
+			}),
+			MatrixInitiator<int>::fill_matrix(matrix_factory->create_simple_matrix(1, 1), 1, 1000)
+		});
+		//console//
+		group_matrix->set_drawer(console_drawer);
+		system("cls");
+		group_matrix->draw();
+		prev_matrix = group_matrix;
+		//window//
+		drawing_matrix = 3;
+		this->Invalidate();
+		//for_decorator//
+		decorator_matrix = matrix_factory->create_change_numeration_matrix(group_matrix);
 		decorator_matrix->set_drawer(console_drawer);
 		break;
 	case IDC_CHECK_BOX_BORDER:
